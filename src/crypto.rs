@@ -12,15 +12,14 @@ pub fn decrypt_index_item_file_length(item_index: u32, ciphertext: u32) -> u32 {
 }
 
 pub fn decrypt_index_item_filename(ciphertext: &[u8], key: u8) -> (Vec<u8>, usize){
-    let mut buffer: Vec<u8> = vec![0; ciphertext.len()];
-    buffer.clone_from_slice(ciphertext);
+    let mut buffer: Vec<u8> = Vec::with_capacity(100);
     let mut idx = 0;
     loop {
-        let c = buffer[idx] ^ key ^ get_key_at(idx);
+        let c = ciphertext[idx] ^ key ^ get_key_at(idx);
         if ::DEBUG {
             println!("{:X} ({}) = {:X} ^ {:X} ^ {:X}", c, c as char, buffer[idx], key, get_key_at(idx));
         }
-        buffer[idx] = c;
+        buffer.push(c);
         idx += 1;
         if c == 0 {
             break;
