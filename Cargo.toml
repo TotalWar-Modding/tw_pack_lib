@@ -1,0 +1,7 @@
+[package]
+name = "twa_pack_lib"
+version = "0.1.0"
+authors = ["Benedikt Constantin Radtke <benediktradtke@mailbox.tu-berlin.de>"]
+
+[dependencies]
+byteorder = "1.2.*"
