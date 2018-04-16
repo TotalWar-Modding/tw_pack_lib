@@ -1,7 +1,6 @@
 extern crate byteorder;
 
 use std::str;
-use std::cmp::min;
 
 use byteorder::LittleEndian;
 use byteorder::ByteOrder;
@@ -131,7 +130,6 @@ impl<'a> Iterator for PackIndexIterator<'a> {
     fn next(&mut self) -> Option<PackIndexItem> {
         if self.iterator_item_index >= 1 {
             self.iterator_item_index -= 1;
-            let number_of_bytes_to_be_read: usize = 0x1C4;
 
             // read 4 bytes item length
             let mut item_length = LittleEndian::read_u32(&self.raw_data[self.iterator_position..self.iterator_position + 4]);
@@ -151,13 +149,25 @@ impl<'a> Iterator for PackIndexIterator<'a> {
                 None
             };
 
-            let source_size = number_of_bytes_to_be_read + self.iterator_position;
-            //println!("source_size 0x{:X}", source_size);
-
             let from = self.iterator_position;
-            let to = min(self.iterator_position + source_size, self.raw_data.len());
-            //println!("decrypting from {:X} to {:X}", from, to);
-            let (plaintext, len) = crypto::decrypt_index_item_filename(&self.raw_data[from..to],item_length as u8);
+            let to = self.raw_data.len();
+
+            let (plaintext, len) = if self.is_encrypted {
+                 crypto::decrypt_index_item_filename(&self.raw_data[from..to],item_length as u8)
+            } else {
+                let mut  buf = vec!();
+                let mut i = 0;
+                loop {
+                    let c = self.raw_data[from + i];
+                    buf.push(c);
+                    i += 1;
+                    if c == 0 {
+                        break;
+                    }
+                }
+                (buf, i)
+            };
+
             self.iterator_position += len;
 
             Some(PackIndexItem {
