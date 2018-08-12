@@ -11,9 +11,8 @@ fn test_read_header() {
     f.read_to_end(&mut buf).unwrap();
 
     let pack = twa_pack_lib::parse_pack(buf);
-    let index = pack.get_index();
 
-    for item in index.into_iter() {
+    for item in pack.into_iter() {
         println!("{:?}", item);
     }
 }
