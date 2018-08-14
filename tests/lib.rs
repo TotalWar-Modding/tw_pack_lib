@@ -13,7 +13,7 @@ fn test_read_header() {
     let pack = twa_pack_lib::parse_pack(buf);
 
     for item in pack.into_iter() {
-        println!("{:?}", item);
+        println!("{}", item);
     }
 }
 
