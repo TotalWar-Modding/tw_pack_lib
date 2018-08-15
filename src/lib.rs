@@ -8,6 +8,8 @@ use byteorder::ByteOrder;
 mod crypto;
 
 static DEBUG: bool = false;
+static PFH5_PREAMBLE: u32 = 0x35484650;
+static PFH4_PREAMBLE: u32 = 0x34484650;
 static INDEX_ENCRYPTED: u32 = 1 << 7;
 static HAS_INDEX_EXTRA_DWORD: u32 = 1 << 6;
 static CONTENT_ENCRYPTED: u32 = 1 << 4;
@@ -40,7 +42,7 @@ pub enum PackLibError {
 
 impl fmt::Display for PackFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "PackFile (encrypted index: {}, padded payload: {})", has_encrypted_index(&self.raw_data), has_encrypted_content(&self.raw_data))
+        write!(f, "PackFile (encrypted index: {}, encrypted content: {}, padding: {})", has_encrypted_index(&self.raw_data),has_encrypted_content(&self.raw_data), has_padding(&self.raw_data))
     }
 }
 
@@ -54,8 +56,8 @@ impl<'a> IntoIterator for &'a PackFile {
     type Item = Result<PackedFile, PackLibError>;
     type IntoIter = PackIndexIterator<'a>;
     fn into_iter(self) -> Self::IntoIter {
-        let payload_position = if has_encrypted_content(&self.raw_data) {
-            let unpadded = get_minimum_header_size() + get_index_size(&self.raw_data);
+        let payload_position = if has_padding(&self.raw_data) {
+            let unpadded = get_static_header_size(&self.raw_data) + get_extended_header_size(&self.raw_data) + get_index_size(&self.raw_data);
             let remainder = unpadded % 8;
             if remainder > 0 {
                 unpadded + 8 - remainder
@@ -63,15 +65,19 @@ impl<'a> IntoIterator for &'a PackFile {
                 unpadded
             }
         } else {
-            get_minimum_header_size() + get_index_size(&self.raw_data)
+            get_static_header_size(&self.raw_data) + get_extended_header_size(&self.raw_data) + get_index_size(&self.raw_data)
         };
         PackIndexIterator {
             raw_data: &self.raw_data,
             next_item: get_index_length(&self.raw_data),
-            index_position: get_minimum_header_size(),
+            index_position: get_static_header_size(&self.raw_data) + get_extended_header_size(&self.raw_data),
             payload_position: payload_position
         }
     }
+}
+
+fn get_preamble(raw_data: &[u8]) -> u32 {
+    LittleEndian::read_u32(&raw_data[0x00..0x04])
 }
 
 fn get_bitmask(raw_data: &[u8]) -> u32 {
@@ -90,8 +96,18 @@ fn _get_signature_offset(raw_data: &[u8]) -> u32 {
     LittleEndian::read_u32(&raw_data[0x28..0x2C])
 }
 
-fn get_minimum_header_size() -> u32 {
-    0x30
+fn get_static_header_size(raw_data: &[u8]) -> u32 {
+    if get_preamble(&raw_data) == PFH4_PREAMBLE {
+        0x1C
+    } else if get_preamble(&raw_data) == PFH5_PREAMBLE {
+        0x30
+    } else {
+        panic!("Invalid preamble!")
+    }
+}
+
+fn get_extended_header_size(raw_data: &[u8]) -> u32 {
+    LittleEndian::read_u32(&raw_data[0x0C..0x10])
 }
 
 fn has_encrypted_index(raw_data: &[u8]) -> bool {
@@ -106,6 +122,13 @@ fn has_encrypted_content(raw_data: &[u8]) -> bool {
     get_bitmask(&raw_data) & CONTENT_ENCRYPTED != 0
 }
 
+fn has_padding(raw_data: &[u8]) -> bool {
+    if get_preamble(&raw_data) == PFH5_PREAMBLE && has_encrypted_content(&raw_data) {
+        true
+    } else {
+        false
+    }
+}
 
 impl<'a> Iterator for PackIndexIterator<'a> {
     type Item = Result<PackedFile, PackLibError>;
@@ -153,7 +176,7 @@ impl<'a> Iterator for PackIndexIterator<'a> {
             self.index_position += len;
             let current_payload_position = self.payload_position;
             self.payload_position += item_length;
-            if has_encrypted_content(&self.raw_data) {
+            if has_padding(&self.raw_data) {
                 let remainder = self.payload_position % 8;
                 if remainder > 0 {
                     self.payload_position += 8 - remainder
@@ -178,11 +201,11 @@ impl<'a> Iterator for PackIndexIterator<'a> {
 }
 
 pub fn parse_pack<'a>(bytes: Vec<u8>) -> Result<PackFile, PackLibError> {
-    if bytes.len() < get_minimum_header_size() as usize {
+    if bytes.len() < 4 || bytes.len() < get_static_header_size(&bytes) as usize {
         return Err(PackLibError::FileTooSmallError)
     }
 
-    if LittleEndian::read_u32(&bytes[0..4]) != 0x35484650 {
+    if get_preamble(&bytes) !=  PFH5_PREAMBLE && get_preamble(&bytes) != PFH4_PREAMBLE {
         return Err(PackLibError::InvalidHeaderError)
     }
 
