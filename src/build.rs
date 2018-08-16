@@ -68,13 +68,18 @@ fn traverse_directory(directory: &Path, prefix: String) -> Result<(u32, u32, Vec
 
 fn write_header(output_file: &mut File, version: u32, bitmask: u32, index_size: u32, files: &Vec<PackedFile>) -> Result<(), ::BuildPackError> {
     if version == 4 {
-        output_file.write_u32::<LittleEndian>(::PFH4_PREAMBLE)?
-        // TODO
+        output_file.write_u32::<LittleEndian>(::PFH4_PREAMBLE)?;
+        output_file.write_u32::<LittleEndian>(bitmask)?;
+        output_file.write_u32::<LittleEndian>(0)?; // PF Index Count
+        output_file.write_u32::<LittleEndian>(0)?; // PF Index Size
+        output_file.write_u32::<LittleEndian>(files.len() as u32)?;
+        output_file.write_u32::<LittleEndian>(index_size as u32)?;
+        output_file.write_u32::<LittleEndian>(0)?; // timestamp
     } else if version == 5 {
         output_file.write_u32::<LittleEndian>(::PFH5_PREAMBLE)?;
         output_file.write_u32::<LittleEndian>(bitmask)?;
-        output_file.write_u32::<LittleEndian>(0)?;
-        output_file.write_u32::<LittleEndian>(0)?;
+        output_file.write_u32::<LittleEndian>(0)?; // PF Index Count
+        output_file.write_u32::<LittleEndian>(0)?; // PF Index Size
         output_file.write_u32::<LittleEndian>(files.len() as u32)?;
         output_file.write_u32::<LittleEndian>(index_size as u32)?;
         output_file.write_u32::<LittleEndian>(0)?;
