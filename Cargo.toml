@@ -1,6 +1,6 @@
 [package]
 name = "twa_pack_lib"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Benedikt Constantin Radtke <benediktradtke@gmail.com>"]
 description = "A Total War: Arena pack file library"
 keywords = ["Total", "War", "Arena", "pack"]
