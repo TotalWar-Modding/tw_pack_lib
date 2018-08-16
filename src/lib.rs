@@ -7,15 +7,39 @@ mod crypto;
 use std::fs::File;
 use std::path::Path;
 
-use parse::PackFile;
-use parse::ParsePackError;
-use build::BuildPackError;
-
 static DEBUG: bool = false;
 static PFH5_PREAMBLE: u32 = 0x35484650;
 static PFH4_PREAMBLE: u32 = 0x34484650;
+static INDEX_ENCRYPTED: u32         = 0b0000_0000_1000_0000;
+static HAS_INDEX_EXTRA_DWORD: u32   = 0b0000_0000_0100_0000;
+static CONTENT_ENCRYPTED: u32       = 0b0000_0000_0001_0000;
 
-pub fn parse_pack<'a>(bytes: Vec<u8>) -> Result<PackFile, ParsePackError> {
+#[derive(Debug)]
+pub struct ParsedPackFile {
+    raw_data: Vec<u8>
+}
+
+#[derive(Debug)]
+pub struct ParsedPackedFile {
+    pub extra_dword: Option<u32>,
+    pub name: String,
+    pub content: Vec<u8>
+}
+
+#[derive(Debug)]
+pub enum ParsePackError {
+    InvalidHeaderError,
+    FileTooSmallError
+}
+
+#[derive(Debug)]
+pub enum BuildPackError {
+    UnsupportedPFHVersionError,
+    EmptyInputError,
+    IOError
+}
+
+pub fn parse_pack<'a>(bytes: Vec<u8>) -> Result<::ParsedPackFile, ParsePackError> {
     parse::parse_pack(bytes)
 }
 

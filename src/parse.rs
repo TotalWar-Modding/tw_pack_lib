@@ -3,15 +3,6 @@ use std::fmt;
 use byteorder::LittleEndian;
 use byteorder::ByteOrder;
 
-static INDEX_ENCRYPTED: u32         = 0b0000_0000_1000_0000;
-static HAS_INDEX_EXTRA_DWORD: u32   = 0b0000_0000_0100_0000;
-static CONTENT_ENCRYPTED: u32       = 0b0000_0000_0001_0000;
-
-#[derive(Debug)]
-pub struct PackFile {
-    raw_data: Vec<u8>
-}
-
 #[derive(Debug)]
 pub struct PackIndexIterator<'a> {
     raw_data: &'a [u8],
@@ -20,33 +11,20 @@ pub struct PackIndexIterator<'a> {
     payload_position: u32
 }
 
-#[derive(Debug)]
-pub struct PackedFile {
-    pub extra_dword: Option<u32>,
-    pub name: String,
-    pub content: Vec<u8>
-}
-
-#[derive(Debug)]
-pub enum ParsePackError {
-    InvalidHeaderError,
-    FileTooSmallError
-}
-
-impl fmt::Display for PackFile {
+impl fmt::Display for ::ParsedPackFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "PackFile (encrypted index: {}, encrypted content: {}, padding: {})", has_encrypted_index(&self.raw_data),has_encrypted_content(&self.raw_data), has_padding(&self.raw_data))
     }
 }
 
-impl fmt::Display for PackedFile {
+impl fmt::Display for ::ParsedPackedFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "PackedFile {{ extra_dword: {:?}, name: \"{}\" }}", self.extra_dword, self.name)
     }
 }
 
-impl<'a> IntoIterator for &'a PackFile {
-    type Item = Result<PackedFile, ParsePackError>;
+impl<'a> IntoIterator for &'a ::ParsedPackFile {
+    type Item = Result<::ParsedPackedFile, ::ParsePackError>;
     type IntoIter = PackIndexIterator<'a>;
     fn into_iter(self) -> Self::IntoIter {
         let payload_position = if has_padding(&self.raw_data) {
@@ -104,15 +82,15 @@ fn get_extended_header_size(raw_data: &[u8]) -> u32 {
 }
 
 fn has_encrypted_index(raw_data: &[u8]) -> bool {
-    get_bitmask(&raw_data) & INDEX_ENCRYPTED != 0
+    get_bitmask(&raw_data) & ::INDEX_ENCRYPTED != 0
 }
 
 fn has_index_extra_dword(raw_data: &[u8]) -> bool {
-    get_bitmask(&raw_data) & HAS_INDEX_EXTRA_DWORD != 0
+    get_bitmask(&raw_data) & ::HAS_INDEX_EXTRA_DWORD != 0
 }
 
 fn has_encrypted_content(raw_data: &[u8]) -> bool {
-    get_bitmask(&raw_data) & CONTENT_ENCRYPTED != 0
+    get_bitmask(&raw_data) & ::CONTENT_ENCRYPTED != 0
 }
 
 fn has_padding(raw_data: &[u8]) -> bool {
@@ -124,8 +102,8 @@ fn has_padding(raw_data: &[u8]) -> bool {
 }
 
 impl<'a> Iterator for PackIndexIterator<'a> {
-    type Item = Result<PackedFile, ParsePackError>;
-    fn next(&mut self) -> Option<Result<PackedFile, ParsePackError>> {
+    type Item = Result<::ParsedPackedFile, ::ParsePackError>;
+    fn next(&mut self) -> Option<Result<::ParsedPackedFile, ::ParsePackError>> {
         if self.next_item >= 1 {
             self.next_item -= 1;
 
@@ -182,7 +160,7 @@ impl<'a> Iterator for PackIndexIterator<'a> {
                 self.raw_data[current_payload_position as usize..(current_payload_position + item_length) as usize].to_vec()
             };
 
-            Some(Ok(PackedFile {
+            Some(Ok(::ParsedPackedFile {
                 extra_dword: dword2,
                 name: String::from_utf8(plaintext[..(len-1) as usize].to_vec()).unwrap(),
                 content: content
@@ -193,16 +171,16 @@ impl<'a> Iterator for PackIndexIterator<'a> {
     }
 }
 
-pub fn parse_pack<'a>(bytes: Vec<u8>) -> Result<PackFile, ParsePackError> {
+pub fn parse_pack<'a>(bytes: Vec<u8>) -> Result<::ParsedPackFile, ::ParsePackError> {
     if bytes.len() < 4 || bytes.len() < get_static_header_size(&bytes) as usize {
-        return Err(ParsePackError::FileTooSmallError)
+        return Err(::ParsePackError::FileTooSmallError)
     }
 
     if get_preamble(&bytes) !=  ::PFH5_PREAMBLE && get_preamble(&bytes) != ::PFH4_PREAMBLE {
-        return Err(ParsePackError::InvalidHeaderError)
+        return Err(::ParsePackError::InvalidHeaderError)
     }
 
-    Ok(PackFile {
+    Ok(::ParsedPackFile {
         raw_data: bytes
     })
 }
