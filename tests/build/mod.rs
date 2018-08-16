@@ -7,6 +7,6 @@ use std::path::Path;
 fn test_build_pfh5_pack() {
     twa_pack_lib::build_pack(&Path::new(&"tests/build/loadingscreen"),
                              &mut File::create(Path::new("tests/build/loadingscreen_test.pack")).unwrap(),
-                             4,
+                             5,
                              0x0103).unwrap()
 }

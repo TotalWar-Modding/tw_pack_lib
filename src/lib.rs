@@ -29,7 +29,7 @@ pub struct ParsedPackedFile {
 #[derive(Debug)]
 pub enum ParsePackError {
     InvalidHeaderError,
-    FileTooSmallError
+    InvalidFileError
 }
 
 #[derive(Debug)]

@@ -21,7 +21,6 @@ pub fn decrypt_index_item_filename(ciphertext: &[u8], key: u8) -> (Vec<u8>, u32)
     let mut idx: u32 = 0;
     loop {
         let c = ciphertext[idx as usize] ^ key ^ get_key_at(idx);
-        buffer.push(c);
         if ::DEBUG {
             println!("{:X} ({}) = {:X} ^ {:X} ^ {:X}", c, c as char, buffer[idx as usize], key, get_key_at(idx));
         }
@@ -29,6 +28,7 @@ pub fn decrypt_index_item_filename(ciphertext: &[u8], key: u8) -> (Vec<u8>, u32)
         if c == 0 {
             break;
         }
+        buffer.push(c);
     }
     (buffer, idx)
 }

@@ -8,8 +8,10 @@ pub struct PackIndexIterator<'a> {
     raw_data: &'a [u8],
     next_item: u32,
     index_position: u32,
-    payload_position: u32
+    content_position: u32
 }
+
+struct PackIndexIteratorError {}
 
 impl fmt::Display for ::ParsedPackFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -24,7 +26,7 @@ impl fmt::Display for ::ParsedPackedFile {
 }
 
 impl<'a> IntoIterator for &'a ::ParsedPackFile {
-    type Item = Result<::ParsedPackedFile, ::ParsePackError>;
+    type Item = ::ParsedPackedFile;
     type IntoIter = PackIndexIterator<'a>;
     fn into_iter(self) -> Self::IntoIter {
         let payload_position = if has_padding(&self.raw_data) {
@@ -42,7 +44,7 @@ impl<'a> IntoIterator for &'a ::ParsedPackFile {
             raw_data: &self.raw_data,
             next_item: get_index_length(&self.raw_data),
             index_position: get_static_header_size(&self.raw_data) + get_extended_header_size(&self.raw_data),
-            payload_position: payload_position
+            content_position: payload_position
         }
     }
 }
@@ -101,79 +103,127 @@ fn has_padding(raw_data: &[u8]) -> bool {
     }
 }
 
-impl<'a> Iterator for PackIndexIterator<'a> {
-    type Item = Result<::ParsedPackedFile, ::ParsePackError>;
-    fn next(&mut self) -> Option<Result<::ParsedPackedFile, ::ParsePackError>> {
+impl<'a> PackIndexIterator<'a> {
+    fn read_index_u32(&self) -> Result<u32, PackIndexIteratorError> {
+        if self.raw_data.len() as u32 >= self.index_position + 4 {
+            Ok(LittleEndian::read_u32(&self.raw_data[self.index_position as usize..(self.index_position + 4) as usize]))
+        } else {
+            Err(PackIndexIteratorError{})
+        }
+    }
+
+    fn read_data_slice(&self, from: u32, size: u32) -> Result<&[u8], PackIndexIteratorError> {
+        let to = from.checked_add(size).ok_or(PackIndexIteratorError{})?;
+        if to <= self.raw_data.len() as u32 {
+            Ok(&self.raw_data[from as usize..to as usize])
+        } else {
+            Err(PackIndexIteratorError{})
+        }
+    }
+
+    fn read_content_slice(&self, size: u32) -> Result<&[u8], PackIndexIteratorError> {
+        self.read_data_slice(self.content_position, size)
+    }
+
+    fn read_index_slice(&self, size: u32) -> Result<&[u8], PackIndexIteratorError> {
+        self.read_data_slice(self.index_position, size)
+    }
+
+    fn get_next(&mut self) -> Result<::ParsedPackedFile, PackIndexIteratorError> {
         if self.next_item >= 1 {
             self.next_item -= 1;
 
             // read 4 bytes item length
-            let mut item_length = LittleEndian::read_u32(&self.raw_data[self.index_position as usize..(self.index_position + 4) as usize]);
+            let mut item_length = self.read_index_u32()?;
             item_length = if has_encrypted_index(&self.raw_data) {
                 ::crypto::decrypt_index_item_file_length(self.next_item, item_length)
             } else {
                 item_length
             };
-            self.index_position += 4;
+            self.index_position = self.index_position.checked_add(4).ok_or(PackIndexIteratorError{})?;
 
             // read 4 bytes whatever, if present
             let dword2 = if has_index_extra_dword(&self.raw_data) {
-                let d = LittleEndian::read_u32(&self.raw_data[self.index_position as usize..(self.index_position + 4) as usize]);
-                self.index_position += 4;
+                let d = self.read_index_u32()?;
+                self.index_position = self.index_position.checked_add(4).ok_or(PackIndexIteratorError{})?;
                 Some(d)
             } else {
                 None
             };
 
-            let from = self.index_position;
-            let to = self.raw_data.len();
-
-            let (plaintext, len) = if has_encrypted_index(&self.raw_data) {
-                ::crypto::decrypt_index_item_filename(&self.raw_data[from as usize..to],item_length as u8)
+            let remaining_index_size = get_index_size(&self.raw_data) - (self.index_position - get_static_header_size(&self.raw_data) - get_extended_header_size(&self.raw_data));
+            let (file_path, len) = if has_encrypted_index(&self.raw_data) {
+                ::crypto::decrypt_index_item_filename(self.read_index_slice(remaining_index_size)?,item_length as u8)
             } else {
                 let mut  buf = vec!();
                 let mut i = 0;
                 loop {
-                    let c = self.raw_data[(from + i) as usize];
-                    buf.push(c);
+                    let c = self.raw_data[(self.index_position + i) as usize];
                     i += 1;
                     if c == 0 {
                         break;
                     }
+                    buf.push(c);
+                    if i >= remaining_index_size {
+                        return Err(PackIndexIteratorError{});
+                    }
                 }
                 (buf, i)
             };
-
             self.index_position += len;
-            let current_payload_position = self.payload_position;
-            self.payload_position += item_length;
-            if has_padding(&self.raw_data) {
-                let remainder = self.payload_position % 8;
-                if remainder > 0 {
-                    self.payload_position += 8 - remainder
-                }
-            }
 
-            let content = if has_encrypted_content(&self.raw_data) {
-                ::crypto::decrypt_file(&self.raw_data[current_payload_position as usize..(current_payload_position + item_length) as usize], item_length as usize, false)
+            let padded_item_length = if has_encrypted_content(&self.raw_data) {
+                let remainder = item_length % 8;
+                if remainder > 0 {
+                    item_length.checked_add(8-remainder).ok_or(PackIndexIteratorError{})?
+                } else {
+                    item_length
+                }
             } else {
-                self.raw_data[current_payload_position as usize..(current_payload_position + item_length) as usize].to_vec()
+                item_length
             };
 
-            Some(Ok(::ParsedPackedFile {
+            let content = if has_encrypted_content(&self.raw_data) {
+                ::crypto::decrypt_file(&self.read_content_slice(padded_item_length)?, item_length as usize, false)
+            } else {
+                self.read_content_slice(item_length)?.to_vec()
+            };
+
+            if has_padding(&self.raw_data) {
+                self.content_position = self.content_position.checked_add(padded_item_length).ok_or(PackIndexIteratorError{})?;
+            } else {
+                self.content_position = self.content_position.checked_add(item_length).ok_or(PackIndexIteratorError{})?;
+            }
+            assert!(content.len() == item_length as usize, format!("{} != {}", content.len(), item_length));
+
+            Ok(::ParsedPackedFile {
                 extra_dword: dword2,
-                name: String::from_utf8(plaintext[..(len-1) as usize].to_vec()).unwrap(),
+                name: String::from_utf8(file_path).map_err(|_| PackIndexIteratorError{})?,
                 content: content
-            }))
+            })
         } else {
-            None
+            Err(PackIndexIteratorError{})
+        }
+    }
+}
+
+impl<'a> Iterator for PackIndexIterator<'a> {
+    type Item = ::ParsedPackedFile;
+    fn next(&mut self) -> Option<::ParsedPackedFile> {
+        match self.get_next() {
+            Ok(item) => Some(item),
+            Err(_) => None
         }
     }
 }
 
 pub fn parse_pack<'a>(bytes: Vec<u8>) -> Result<::ParsedPackFile, ::ParsePackError> {
     if bytes.len() < 4 || bytes.len() < get_static_header_size(&bytes) as usize {
-        return Err(::ParsePackError::FileTooSmallError)
+        return Err(::ParsePackError::InvalidFileError)
+    }
+
+    if bytes.len() < (get_static_header_size(&bytes) + get_extended_header_size(&bytes)) as usize {
+        return Err(::ParsePackError::InvalidFileError)
     }
 
     if get_preamble(&bytes) !=  ::PFH5_PREAMBLE && get_preamble(&bytes) != ::PFH4_PREAMBLE {
