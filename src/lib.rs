@@ -10,8 +10,9 @@ use std::path::Path;
 static DEBUG: bool = false;
 static PFH5_PREAMBLE: u32 = 0x35484650;
 static PFH4_PREAMBLE: u32 = 0x34484650;
+static HAS_BIG_HEADER: u32          = 0b0000_0001_0000_0000;
 static INDEX_ENCRYPTED: u32         = 0b0000_0000_1000_0000;
-static HAS_INDEX_EXTRA_DWORD: u32   = 0b0000_0000_0100_0000;
+static HAS_INDEX_WITH_TIMESTAMPS: u32   = 0b0000_0000_0100_0000;
 static CONTENT_ENCRYPTED: u32       = 0b0000_0000_0001_0000;
 
 #[derive(Debug)]
@@ -21,7 +22,7 @@ pub struct ParsedPackFile {
 
 #[derive(Debug)]
 pub struct ParsedPackedFile {
-    pub extra_dword: Option<u32>,
+    pub timestamp: Option<u32>,
     pub name: String,
     pub content: Vec<u8>
 }

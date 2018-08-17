@@ -15,13 +15,13 @@ struct PackIndexIteratorError {}
 
 impl fmt::Display for ::ParsedPackFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "PackFile (encrypted index: {}, encrypted content: {}, padding: {})", has_encrypted_index(&self.raw_data),has_encrypted_content(&self.raw_data), has_padding(&self.raw_data))
+        write!(f, "PackFile (encrypted index: {}, encrypted content: {}, padding: {}, timestamped files: {})", has_encrypted_index(&self.raw_data), has_encrypted_content(&self.raw_data), has_padding(&self.raw_data), has_index_with_timestamps(&self.raw_data))
     }
 }
 
 impl fmt::Display for ::ParsedPackedFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "PackedFile {{ extra_dword: {:?}, name: \"{}\" }}", self.extra_dword, self.name)
+        write!(f, "PackedFile {{ timestamp: {:?}, name: \"{}\" }}", self.timestamp, self.name)
     }
 }
 
@@ -73,7 +73,11 @@ fn get_static_header_size(raw_data: &[u8]) -> u32 {
     if get_preamble(&raw_data) == ::PFH4_PREAMBLE {
         0x1C
     } else if get_preamble(&raw_data) == ::PFH5_PREAMBLE {
-        0x30
+        if has_big_header(&raw_data) {
+            0x30
+        } else {
+            0x1C
+        }
     } else {
         panic!("Invalid preamble!")
     }
@@ -83,12 +87,16 @@ fn get_extended_header_size(raw_data: &[u8]) -> u32 {
     LittleEndian::read_u32(&raw_data[0x0C..0x10])
 }
 
+fn has_big_header(raw_data: &[u8]) -> bool {
+    get_bitmask(&raw_data) & ::HAS_BIG_HEADER != 0
+}
+
 fn has_encrypted_index(raw_data: &[u8]) -> bool {
     get_bitmask(&raw_data) & ::INDEX_ENCRYPTED != 0
 }
 
-fn has_index_extra_dword(raw_data: &[u8]) -> bool {
-    get_bitmask(&raw_data) & ::HAS_INDEX_EXTRA_DWORD != 0
+fn has_index_with_timestamps(raw_data: &[u8]) -> bool {
+    get_bitmask(&raw_data) & ::HAS_INDEX_WITH_TIMESTAMPS != 0
 }
 
 fn has_encrypted_content(raw_data: &[u8]) -> bool {
@@ -143,13 +151,17 @@ impl<'a> PackIndexIterator<'a> {
             self.index_position = self.index_position.checked_add(4).ok_or(PackIndexIteratorError{})?;
 
             // read 4 bytes whatever, if present
-            let dword2 = if has_index_extra_dword(&self.raw_data) {
+            let timestamp = if has_index_with_timestamps(&self.raw_data) {
                 let d = self.read_index_u32()?;
                 self.index_position = self.index_position.checked_add(4).ok_or(PackIndexIteratorError{})?;
                 Some(d)
             } else {
                 None
             };
+
+            if get_preamble(&self.raw_data) == ::PFH5_PREAMBLE && !has_big_header(&self.raw_data) {
+                self.index_position = self.index_position.checked_add(1).ok_or(PackIndexIteratorError{})?;
+            }
 
             let remaining_index_size = get_index_size(&self.raw_data) - (self.index_position - get_static_header_size(&self.raw_data) - get_extended_header_size(&self.raw_data));
             let (file_path, len) = if has_encrypted_index(&self.raw_data) {
@@ -197,7 +209,7 @@ impl<'a> PackIndexIterator<'a> {
             assert!(content.len() == item_length as usize, format!("{} != {}", content.len(), item_length));
 
             Ok(::ParsedPackedFile {
-                extra_dword: dword2,
+                timestamp: timestamp,
                 name: String::from_utf8(file_path).map_err(|_| PackIndexIteratorError{})?,
                 content: content
             })
