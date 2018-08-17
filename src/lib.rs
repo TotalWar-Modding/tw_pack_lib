@@ -10,8 +10,8 @@ use std::fs::File;
 use std::path::Path;
 
 static DEBUG: bool = false;
-static PFH5_PREAMBLE: u32 = 0x35484650;
-static PFH4_PREAMBLE: u32 = 0x34484650;
+const PFH5_PREAMBLE: u32 = 0x35484650;
+const PFH4_PREAMBLE: u32 = 0x34484650;
 
 #[derive(Debug)]
 pub enum PFHVersion {
@@ -48,7 +48,7 @@ pub struct PackFile {
 }
 
 impl PackFile {
-    fn get_version(&self) -> ::PFHVersion {
+    pub fn get_version(&self) -> ::PFHVersion {
         match parse::get_preamble(&self.raw_data) {
             PFH5_PREAMBLE => PFHVersion::PFH5,
             PFH4_PREAMBLE => PFHVersion::PFH4,
@@ -56,7 +56,7 @@ impl PackFile {
         }
     }
 
-    fn get_bitmask(&self) -> ::PFHFlags {
+    pub fn get_bitmask(&self) -> ::PFHFlags {
         parse::get_bitmask(&self.raw_data)
     }
 }
