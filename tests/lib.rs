@@ -12,7 +12,7 @@ fn test_read_header() {
     let mut buf = vec!();
     f.read_to_end(&mut buf).unwrap();
 
-    let pack = twa_pack_lib::parse_pack(buf);
+    let pack = twa_pack_lib::parse_pack(buf).unwrap();
 
     for item in pack.into_iter() {
         println!("{}", item);

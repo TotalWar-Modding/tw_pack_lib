@@ -53,8 +53,8 @@ fn get_preamble(raw_data: &[u8]) -> u32 {
     LittleEndian::read_u32(&raw_data[0x00..0x04])
 }
 
-fn get_bitmask(raw_data: &[u8]) -> u32 {
-    LittleEndian::read_u32(&raw_data[0x04..0x08])
+fn get_bitmask(raw_data: &[u8]) -> ::PFHFlags {
+    ::PFHFlags::from_bits_truncate(LittleEndian::read_u32(&raw_data[0x04..0x08]))
 }
 
 fn get_index_length(raw_data: &[u8]) -> u32 {
@@ -88,27 +88,23 @@ fn get_extended_header_size(raw_data: &[u8]) -> u32 {
 }
 
 fn has_big_header(raw_data: &[u8]) -> bool {
-    get_bitmask(&raw_data) & ::HAS_BIG_HEADER != 0
+    get_bitmask(&raw_data).contains(::PFHFlags::HAS_BIG_HEADER)
 }
 
 fn has_encrypted_index(raw_data: &[u8]) -> bool {
-    get_bitmask(&raw_data) & ::INDEX_ENCRYPTED != 0
+    get_bitmask(&raw_data).contains(::PFHFlags::HAS_ENCRYPTED_INDEX)
 }
 
 fn has_index_with_timestamps(raw_data: &[u8]) -> bool {
-    get_bitmask(&raw_data) & ::HAS_INDEX_WITH_TIMESTAMPS != 0
+    get_bitmask(&raw_data).contains(::PFHFlags::HAS_INDEX_WITH_TIMESTAMPS)
 }
 
 fn has_encrypted_content(raw_data: &[u8]) -> bool {
-    get_bitmask(&raw_data) & ::CONTENT_ENCRYPTED != 0
+    get_bitmask(&raw_data).contains(::PFHFlags::HAS_ENCRYPTED_CONTENT)
 }
 
 fn has_padding(raw_data: &[u8]) -> bool {
-    if get_preamble(&raw_data) == ::PFH5_PREAMBLE && has_encrypted_content(&raw_data) {
-        true
-    } else {
-        false
-    }
+    get_preamble(&raw_data) == ::PFH5_PREAMBLE && has_encrypted_content(&raw_data)
 }
 
 impl<'a> PackIndexIterator<'a> {
@@ -240,6 +236,10 @@ pub fn parse_pack<'a>(bytes: Vec<u8>) -> Result<::PackFile, ::ParsePackError> {
 
     if get_preamble(&bytes) !=  ::PFH5_PREAMBLE && get_preamble(&bytes) != ::PFH4_PREAMBLE {
         return Err(::ParsePackError::InvalidHeaderError)
+    }
+
+    if !::PFHFlags::from_bits(LittleEndian::read_u32(&bytes[0x04..0x08])).is_some() {
+        eprintln!("Warning: Bitmask has unknown bits set")
     }
 
     Ok(::PackFile {
