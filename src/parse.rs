@@ -13,20 +13,20 @@ pub struct PackIndexIterator<'a> {
 
 struct PackIndexIteratorError {}
 
-impl fmt::Display for ::ParsedPackFile {
+impl fmt::Display for ::PackFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "PackFile (encrypted index: {}, encrypted content: {}, padding: {}, timestamped files: {})", has_encrypted_index(&self.raw_data), has_encrypted_content(&self.raw_data), has_padding(&self.raw_data), has_index_with_timestamps(&self.raw_data))
     }
 }
 
-impl fmt::Display for ::ParsedPackedFile {
+impl fmt::Display for ::PackedFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "PackedFile {{ timestamp: {:?}, name: \"{}\" }}", self.timestamp, self.name)
     }
 }
 
-impl<'a> IntoIterator for &'a ::ParsedPackFile {
-    type Item = ::ParsedPackedFile;
+impl<'a> IntoIterator for &'a ::PackFile {
+    type Item = ::PackedFile;
     type IntoIter = PackIndexIterator<'a>;
     fn into_iter(self) -> Self::IntoIter {
         let payload_position = if has_padding(&self.raw_data) {
@@ -137,7 +137,7 @@ impl<'a> PackIndexIterator<'a> {
         self.read_data_slice(self.index_position, size)
     }
 
-    fn get_next(&mut self) -> Result<::ParsedPackedFile, PackIndexIteratorError> {
+    fn get_next(&mut self) -> Result<::PackedFile, PackIndexIteratorError> {
         if self.next_item >= 1 {
             self.next_item -= 1;
 
@@ -208,7 +208,7 @@ impl<'a> PackIndexIterator<'a> {
             }
             assert!(content.len() == item_length as usize, format!("{} != {}", content.len(), item_length));
 
-            Ok(::ParsedPackedFile {
+            Ok(::PackedFile {
                 timestamp: timestamp,
                 name: String::from_utf8(file_path).map_err(|_| PackIndexIteratorError{})?,
                 content: content
@@ -220,8 +220,8 @@ impl<'a> PackIndexIterator<'a> {
 }
 
 impl<'a> Iterator for PackIndexIterator<'a> {
-    type Item = ::ParsedPackedFile;
-    fn next(&mut self) -> Option<::ParsedPackedFile> {
+    type Item = ::PackedFile;
+    fn next(&mut self) -> Option<::PackedFile> {
         match self.get_next() {
             Ok(item) => Some(item),
             Err(_) => None
@@ -229,7 +229,7 @@ impl<'a> Iterator for PackIndexIterator<'a> {
     }
 }
 
-pub fn parse_pack<'a>(bytes: Vec<u8>) -> Result<::ParsedPackFile, ::ParsePackError> {
+pub fn parse_pack<'a>(bytes: Vec<u8>) -> Result<::PackFile, ::ParsePackError> {
     if bytes.len() < 4 || bytes.len() < get_static_header_size(&bytes) as usize {
         return Err(::ParsePackError::InvalidFileError)
     }
@@ -242,7 +242,7 @@ pub fn parse_pack<'a>(bytes: Vec<u8>) -> Result<::ParsedPackFile, ::ParsePackErr
         return Err(::ParsePackError::InvalidHeaderError)
     }
 
-    Ok(::ParsedPackFile {
+    Ok(::PackFile {
         raw_data: bytes
     })
 }

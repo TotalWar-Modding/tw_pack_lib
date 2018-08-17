@@ -8,35 +8,14 @@ use std::io;
 use std::io::Write;
 use std::path::Path;
 
-pub struct PackedFile {
-    relative_path: String,
-    data: Vec<u8>
-}
-
 impl From<io::Error> for ::BuildPackError {
     fn from(_: io::Error) -> Self {
         ::BuildPackError::IOError
     }
 }
 
-pub fn build_pack(input_directory: &Path, output_file: &mut File, version: u32, bitmask: u32) -> Result<(), ::BuildPackError> {
-    if version != 4 && version != 5 {
-        return Err(::BuildPackError::UnsupportedPFHVersionError)
-    }
-    let (_content_size, index_size, files) = traverse_directory(input_directory, "".to_string())?;
-    if files.len() < 1 {
-        return Err(::BuildPackError::EmptyInputError)
-    }
-    write_header(output_file, version, bitmask, index_size+4, &files)?;
-    write_index(output_file, &files)?;
-    write_content(output_file, &files)?;
-    Ok(())
-}
-
-fn traverse_directory(directory: &Path, prefix: String) -> Result<(u32, u32, Vec<PackedFile>), ::BuildPackError> {
+fn traverse_directory(directory: &Path, prefix: String) -> Result<Vec<::PackedFile>, ::BuildPackError> {
     let mut files = vec!();
-    let mut content_size = 0;
-    let mut index_size = 0;
     for entry in fs::read_dir(directory)? {
         let entry = entry?;
         let path = entry.path();
@@ -47,26 +26,23 @@ fn traverse_directory(directory: &Path, prefix: String) -> Result<(u32, u32, Vec
             entry.file_name().into_string().unwrap()
         };
         if metadata.is_dir() {
-            let (child_content_size, child_index_size, child_files) = traverse_directory(&path, relative_path)?;
-            content_size += child_content_size;
-            index_size += child_index_size;
+            let child_files = traverse_directory(&path, relative_path)?;
             files.extend(child_files)
         } else if metadata.is_file() {
             let mut file = File::open(path)?;
             let mut buf = vec!();
             file.read_to_end(&mut buf)?;
-            content_size += buf.len() as u32;
-            index_size += relative_path.len() as u32 + 1;
-            files.push(PackedFile {
-                relative_path: relative_path,
-                data: buf
+            files.push(::PackedFile {
+                name: relative_path,
+                timestamp: None,
+                content: buf
             })
         }
     }
-    Ok((content_size, index_size, files))
+    Ok(files)
 }
 
-fn write_header(output_file: &mut File, version: u32, bitmask: u32, index_size: u32, files: &Vec<PackedFile>) -> Result<(), ::BuildPackError> {
+fn write_header(output_file: &mut File, version: u32, bitmask: u32, index_size: u32, files: &Vec<::PackedFile>) -> Result<(), ::BuildPackError> {
     if version == 4 {
         output_file.write_u32::<LittleEndian>(::PFH4_PREAMBLE)?;
         output_file.write_u32::<LittleEndian>(bitmask)?;
@@ -94,18 +70,49 @@ fn write_header(output_file: &mut File, version: u32, bitmask: u32, index_size: 
     Ok(())
 }
 
-fn write_index(output_file: &mut File, files: &Vec<PackedFile>) -> Result<(), ::BuildPackError> {
+fn write_index(output_file: &mut File, files: &Vec<::PackedFile>) -> Result<(), ::BuildPackError> {
     for file in files {
-        output_file.write_u32::<LittleEndian>(file.data.len() as u32)?;
-        output_file.write_all(file.relative_path.as_ref())?;
+        output_file.write_u32::<LittleEndian>(file.content.len() as u32)?;
+        output_file.write_all(file.name.as_ref())?;
         output_file.write_u8(0)?;
     }
     Ok(())
 }
 
-fn write_content(output_file: &mut File, files: &Vec<PackedFile>) -> Result<(), ::BuildPackError> {
+fn write_content(output_file: &mut File, files: &Vec<::PackedFile>) -> Result<(), ::BuildPackError> {
     for file in files {
-        output_file.write_all(&file.data)?;
+        output_file.write_all(&file.content)?;
     }
+    Ok(())
+}
+
+pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: u32, bitmask: u32) -> Result<(), ::BuildPackError> {
+    if version != 4 && version != 5 {
+        return Err(::BuildPackError::UnsupportedPFHVersionError)
+    }
+    let input_files = traverse_directory(input_directory, "".to_string())?;
+    if input_files.len() < 1 {
+        return Err(::BuildPackError::EmptyInputError)
+    }
+    build_pack_from_memory(&input_files, output_file, version, bitmask)
+}
+
+pub fn build_pack_from_memory(input_files: &Vec<::PackedFile>, output_file: &mut File, version: u32, bitmask: u32) -> Result<(), ::BuildPackError> {
+    if version != 4 && version != 5 {
+        return Err(::BuildPackError::UnsupportedPFHVersionError)
+    }
+    if input_files.len() < 1 {
+        return Err(::BuildPackError::EmptyInputError)
+    }
+
+    let mut index_size = 0;
+    for input_file in input_files {
+        index_size += input_file.name.len() as u32 + 1;
+        index_size += 4;
+        index_size += input_file.timestamp.unwrap_or(0);
+    }
+    write_header(output_file, version, bitmask, index_size, &input_files)?;
+    write_index(output_file, input_files)?;
+    write_content(output_file, input_files)?;
     Ok(())
 }
