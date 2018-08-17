@@ -4,8 +4,8 @@ use byteorder::ByteOrder;
 use byteorder::WriteBytesExt;
 
 static INDEX_KEY: &str = "L2{B3dPL7L*v&+Q3ZsusUhy[BGQn(Uq$f>JQdnvdlf{-K:>OssVDr#TlYU|13B}r";
-fn get_key_at(pos: u32) -> u8 {
-    INDEX_KEY.as_bytes()[(pos % (INDEX_KEY.len() as u32)) as usize]
+fn get_key_at(pos: usize) -> u8 {
+    INDEX_KEY.as_bytes()[pos % (INDEX_KEY.len())]
 }
 
 pub fn decrypt_index_item_file_length(item_index: u32, ciphertext: u32) -> u32 {
@@ -18,7 +18,7 @@ pub fn decrypt_index_item_file_length(item_index: u32, ciphertext: u32) -> u32 {
 
 pub fn decrypt_index_item_filename(ciphertext: &[u8], key: u8) -> (Vec<u8>, u32){
     let mut buffer: Vec<u8> = Vec::with_capacity(100);
-    let mut idx: u32 = 0;
+    let mut idx = 0;
     loop {
         let c = ciphertext[idx as usize] ^ key ^ get_key_at(idx);
         if ::DEBUG {
@@ -30,12 +30,13 @@ pub fn decrypt_index_item_filename(ciphertext: &[u8], key: u8) -> (Vec<u8>, u32)
         }
         buffer.push(c);
     }
-    (buffer, idx)
+    (buffer, idx as u32)
 }
 
 static FILE_KEY: Wrapping<u64> = Wrapping(0x8FEB2A6740A6920E);
 
 pub fn decrypt_file(ciphertext: &[u8], length: usize, verbose: bool) -> Vec<u8> {
+    assert!(ciphertext.len() % 8 == 0, "ciphertext is not a multiple of 8");
     let mut plaintext = Vec::with_capacity(ciphertext.len());
     let mut edi: u32 = 0;
     let mut esi = 0;
