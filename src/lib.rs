@@ -47,6 +47,20 @@ pub struct PackFile {
     raw_data: Vec<u8>
 }
 
+impl PackFile {
+    fn get_version(&self) -> ::PFHVersion {
+        match parse::get_preamble(&self.raw_data) {
+            PFH5_PREAMBLE => PFHVersion::PFH5,
+            PFH4_PREAMBLE => PFHVersion::PFH4,
+            _ => unreachable!()
+        }
+    }
+
+    fn get_bitmask(&self) -> ::PFHFlags {
+        parse::get_bitmask(&self.raw_data)
+    }
+}
+
 #[derive(Debug)]
 pub struct PackedFile {
     pub timestamp: Option<u32>,

@@ -49,11 +49,11 @@ impl<'a> IntoIterator for &'a ::PackFile {
     }
 }
 
-fn get_preamble(raw_data: &[u8]) -> u32 {
+pub fn get_preamble(raw_data: &[u8]) -> u32 {
     LittleEndian::read_u32(&raw_data[0x00..0x04])
 }
 
-fn get_bitmask(raw_data: &[u8]) -> ::PFHFlags {
+pub fn get_bitmask(raw_data: &[u8]) -> ::PFHFlags {
     ::PFHFlags::from_bits_truncate(LittleEndian::read_u32(&raw_data[0x04..0x08]))
 }
 
