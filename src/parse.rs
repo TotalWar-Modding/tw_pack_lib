@@ -21,7 +21,7 @@ impl fmt::Display for ::PackFile {
 
 impl fmt::Display for ::PackedFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "PackedFile {{ timestamp: {:?}, name: \"{}\" }}", self.timestamp, self.name)
+        write!(f, "PackedFile {{ timestamp: {:?}, name: \"{}\" }}", self.timestamp, self.path)
     }
 }
 
@@ -206,8 +206,8 @@ impl<'a> PackIndexIterator<'a> {
 
             Ok(::PackedFile {
                 timestamp: timestamp,
-                name: String::from_utf8(file_path).map_err(|_| PackIndexIteratorError{})?,
-                content: content
+                path: String::from_utf8(file_path).map_err(|_| PackIndexIteratorError{})?,
+                data: content
             })
         } else {
             Err(PackIndexIteratorError{})

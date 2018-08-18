@@ -33,9 +33,9 @@ fn traverse_directory(directory: &Path, prefix: String) -> Result<Vec<::PackedFi
             let mut buf = vec!();
             file.read_to_end(&mut buf)?;
             files.push(::PackedFile {
-                name: relative_path,
+                path: relative_path,
                 timestamp: None,
-                content: buf
+                data: buf
             })
         }
     }
@@ -67,8 +67,8 @@ fn write_header(output_file: &mut File, version: ::PFHVersion, bitmask: ::PFHFla
 
 fn write_index(output_file: &mut File, files: &Vec<::PackedFile>) -> Result<(), ::BuildPackError> {
     for file in files {
-        output_file.write_u32::<LittleEndian>(file.content.len() as u32)?;
-        output_file.write_all(file.name.as_ref())?;
+        output_file.write_u32::<LittleEndian>(file.data.len() as u32)?;
+        output_file.write_all(file.path.as_ref())?;
         output_file.write_u8(0)?;
     }
     Ok(())
@@ -76,7 +76,7 @@ fn write_index(output_file: &mut File, files: &Vec<::PackedFile>) -> Result<(), 
 
 fn write_content(output_file: &mut File, files: &Vec<::PackedFile>) -> Result<(), ::BuildPackError> {
     for file in files {
-        output_file.write_all(&file.content)?;
+        output_file.write_all(&file.data)?;
     }
     Ok(())
 }
@@ -96,7 +96,7 @@ pub fn build_pack_from_memory(input_files: &Vec<::PackedFile>, output_file: &mut
 
     let mut index_size = 0;
     for input_file in input_files {
-        index_size += input_file.name.len() as u32 + 1;
+        index_size += input_file.path.len() as u32 + 1;
         index_size += 4;
         index_size += input_file.timestamp.unwrap_or(0);
     }

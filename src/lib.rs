@@ -64,8 +64,8 @@ impl PackFile {
 #[derive(Debug)]
 pub struct PackedFile {
     pub timestamp: Option<u32>,
-    pub name: String,
-    pub content: Vec<u8>
+    pub path: String,
+    pub data: Vec<u8>
 }
 
 #[derive(Debug)]
