@@ -61,7 +61,7 @@ impl PackFile {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PackedFile {
     pub timestamp: Option<u32>,
     pub path: String,
