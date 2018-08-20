@@ -34,7 +34,7 @@ pub enum PFHFileType {
 }
 
 impl PFHFileType {
-    pub(crate) fn get_value(&self) -> u32 {
+    pub fn get_value(&self) -> u32 {
         match *self {
             PFHFileType::Boot => FILE_TYPE_BOOT,
             PFHFileType::Release => FILE_TYPE_RELEASE,
