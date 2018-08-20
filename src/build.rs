@@ -42,9 +42,9 @@ fn traverse_directory(directory: &Path, prefix: String) -> Result<Vec<::PackedFi
     Ok(files)
 }
 
-fn write_header(output_file: &mut File, version: &::PFHVersion, bitmask: &::PFHFlags, index_size: u32, files: &Vec<::PackedFile>) -> Result<(), ::BuildPackError> {
+fn write_header(output_file: &mut File, version: &::PFHVersion, bitmask: &::PFHFlags,  file_type: &::PFHFileType, index_size: u32, files: &Vec<::PackedFile>) -> Result<(), ::BuildPackError> {
     output_file.write_u32::<LittleEndian>(version.get_preamble())?;
-    output_file.write_u32::<LittleEndian>(bitmask.bits)?;
+    output_file.write_u32::<LittleEndian>(bitmask.bits | file_type.get_value())?;
     output_file.write_u32::<LittleEndian>(0)?; // PF Index Count
     output_file.write_u32::<LittleEndian>(0)?; // PF Index Size
     output_file.write_u32::<LittleEndian>(files.len() as u32)?;
@@ -81,15 +81,15 @@ fn write_content(output_file: &mut File, files: &Vec<::PackedFile>) -> Result<()
     Ok(())
 }
 
-pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: &::PFHVersion, bitmask: &::PFHFlags) -> Result<(), ::BuildPackError> {
+pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: &::PFHVersion, bitmask: &::PFHFlags, file_type: &::PFHFileType) -> Result<(), ::BuildPackError> {
     let input_files = traverse_directory(input_directory, "".to_string())?;
     if input_files.len() < 1 {
         return Err(::BuildPackError::EmptyInputError)
     }
-    build_pack_from_memory(&input_files, output_file, version, bitmask)
+    build_pack_from_memory(&input_files, output_file, version, bitmask, file_type)
 }
 
-pub fn build_pack_from_memory(input_files: &Vec<::PackedFile>, output_file: &mut File, version: &::PFHVersion, bitmask: &::PFHFlags) -> Result<(), ::BuildPackError> {
+pub fn build_pack_from_memory(input_files: &Vec<::PackedFile>, output_file: &mut File, version: &::PFHVersion, bitmask: &::PFHFlags,  file_type: &::PFHFileType) -> Result<(), ::BuildPackError> {
     if input_files.len() < 1 {
         return Err(::BuildPackError::EmptyInputError)
     }
@@ -100,7 +100,7 @@ pub fn build_pack_from_memory(input_files: &Vec<::PackedFile>, output_file: &mut
         index_size += 4;
         index_size += input_file.timestamp.unwrap_or(0);
     }
-    write_header(output_file, version, bitmask, index_size, &input_files)?;
+    write_header(output_file, version, bitmask, file_type, index_size, &input_files)?;
     write_index(output_file, input_files)?;
     write_content(output_file, input_files)?;
     Ok(())

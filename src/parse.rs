@@ -53,8 +53,12 @@ pub fn get_preamble(raw_data: &[u8]) -> u32 {
     LittleEndian::read_u32(&raw_data[0x00..0x04])
 }
 
+pub fn get_file_type(raw_data: &[u8]) -> u32 {
+    LittleEndian::read_u32(&raw_data[0x00..0x04]) & 0xf
+}
+
 pub fn get_bitmask(raw_data: &[u8]) -> ::PFHFlags {
-    ::PFHFlags::from_bits_truncate(LittleEndian::read_u32(&raw_data[0x04..0x08]))
+    ::PFHFlags::from_bits_truncate(LittleEndian::read_u32(&raw_data[0x04..0x08]) & !0xf)
 }
 
 pub fn get_timestamp(raw_data: &[u8]) -> u32 {
