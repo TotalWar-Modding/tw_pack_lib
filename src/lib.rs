@@ -59,6 +59,10 @@ impl PackFile {
     pub fn get_bitmask(&self) -> ::PFHFlags {
         parse::get_bitmask(&self.raw_data)
     }
+
+    pub fn get_timestamp(&self) -> u32 {
+        parse::get_timestamp(&self.raw_data)
+    }
 }
 
 #[derive(Debug, Clone)]
