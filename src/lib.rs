@@ -13,7 +13,7 @@ static DEBUG: bool = false;
 const PFH5_PREAMBLE: u32 = 0x35484650;
 const PFH4_PREAMBLE: u32 = 0x34484650;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum PFHVersion {
     PFH5,
     PFH4
@@ -89,10 +89,10 @@ pub fn parse_pack<'a>(bytes: Vec<u8>) -> Result<::PackFile, ParsePackError> {
     parse::parse_pack(bytes)
 }
 
-pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: PFHVersion, bitmask: PFHFlags) -> Result<(), BuildPackError> {
-    build::build_pack_from_filesystem(input_directory, output_file, version, &bitmask)
+pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: &PFHVersion, bitmask: &PFHFlags) -> Result<(), BuildPackError> {
+    build::build_pack_from_filesystem(input_directory, output_file, version, bitmask)
 }
 
-pub fn build_pack_from_memory(input: &Vec<PackedFile>, output_file: &mut File, version: PFHVersion, bitmask: &PFHFlags) -> Result<(), BuildPackError> {
-    build::build_pack_from_memory(input, output_file, version, &bitmask)
+pub fn build_pack_from_memory(input: &Vec<PackedFile>, output_file: &mut File, version: &PFHVersion, bitmask: &PFHFlags) -> Result<(), BuildPackError> {
+    build::build_pack_from_memory(input, output_file, version, bitmask)
 }
