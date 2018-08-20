@@ -18,13 +18,13 @@ const FILE_TYPE_PATCH: u32      = 2;
 const FILE_TYPE_MOD: u32        = 3;
 const FILE_TYPE_MOVIE: u32      = 4;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PFHVersion {
     PFH5,
     PFH4
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PFHFileType {
     Boot,
     Release,
