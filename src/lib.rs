@@ -90,9 +90,9 @@ pub fn parse_pack<'a>(bytes: Vec<u8>) -> Result<::PackFile, ParsePackError> {
 }
 
 pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: PFHVersion, bitmask: PFHFlags) -> Result<(), BuildPackError> {
-    build::build_pack_from_filesystem(input_directory, output_file, version, bitmask)
+    build::build_pack_from_filesystem(input_directory, output_file, version, &bitmask)
 }
 
-pub fn build_pack_from_memory(input: &Vec<PackedFile>, output_file: &mut File, version: PFHVersion, bitmask: PFHFlags) -> Result<(), BuildPackError> {
-    build::build_pack_from_memory(input, output_file, version, bitmask)
+pub fn build_pack_from_memory(input: &Vec<PackedFile>, output_file: &mut File, version: PFHVersion, bitmask: &PFHFlags) -> Result<(), BuildPackError> {
+    build::build_pack_from_memory(input, output_file, version, &bitmask)
 }
