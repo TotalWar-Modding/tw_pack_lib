@@ -246,7 +246,11 @@ pub fn parse_pack<'a>(bytes: Vec<u8>) -> Result<::PackFile, ::ParsePackError> {
         return Err(::ParsePackError::InvalidHeaderError)
     }
 
-    if !::PFHFlags::from_bits(LittleEndian::read_u32(&bytes[0x04..0x08])).is_some() {
+    if get_file_type(&bytes) > 4 {
+        return Err(::ParsePackError::InvalidHeaderError)
+    }
+
+    if !::PFHFlags::from_bits(LittleEndian::read_u32(&bytes[0x04..0x08]) & !0xf).is_some() {
         eprintln!("Warning: Bitmask has unknown bits set")
     }
 
