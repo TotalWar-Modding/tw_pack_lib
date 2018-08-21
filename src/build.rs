@@ -75,6 +75,7 @@ fn write_index(output_file: &mut File, files: &Vec<::PackedFile>, version: &::PF
         if bitmask.contains(::PFHFlags::HAS_INDEX_WITH_TIMESTAMPS) {
             output_file.write_u32::<LittleEndian>(file.timestamp.unwrap_or(0))?
         }
+
         if *version == ::PFHVersion::PFH5 && !bitmask.contains(::PFHFlags::HAS_BIG_HEADER) {
             output_file.write_u8(0)?;
         }
@@ -108,7 +109,9 @@ pub fn build_pack_from_memory(input_files: &Vec<::PackedFile>, output_file: &mut
     for input_file in input_files {
         index_size += input_file.path.len() as u32 + 1;
         index_size += 4;
-        index_size += input_file.timestamp.unwrap_or(0);
+        if bitmask.contains(::PFHFlags::HAS_INDEX_WITH_TIMESTAMPS) {
+            index_size += 4;
+        }
     }
     write_header(output_file, version, bitmask, file_type, pfh_timestamp, index_size, &input_files)?;
     write_index(output_file, input_files, version, bitmask)?;
