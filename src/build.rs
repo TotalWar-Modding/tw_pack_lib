@@ -54,20 +54,28 @@ fn write_header(output_file: &mut File, version: &::PFHVersion, bitmask: &::PFHF
             output_file.write_u32::<LittleEndian>(0)?; // timestamp
         },
         ::PFHVersion::PFH5 => {
-            output_file.write_u32::<LittleEndian>(0)?;
-            output_file.write_u32::<LittleEndian>(0)?;
-            output_file.write_u32::<LittleEndian>(0)?;
-            output_file.write_u32::<LittleEndian>(0)?;
-            output_file.write_u32::<LittleEndian>(0)?;
-            output_file.write_u32::<LittleEndian>(0)?;
+            if bitmask.contains(::PFHFlags::HAS_BIG_HEADER) {
+                output_file.write_u32::<LittleEndian>(0)?;
+                output_file.write_u32::<LittleEndian>(0)?;
+                output_file.write_u32::<LittleEndian>(0)?;
+                output_file.write_u32::<LittleEndian>(0)?;
+                output_file.write_u32::<LittleEndian>(0)?;
+                output_file.write_u32::<LittleEndian>(0)?;
+            }
         }
     }
     Ok(())
 }
 
-fn write_index(output_file: &mut File, files: &Vec<::PackedFile>) -> Result<(), ::BuildPackError> {
+fn write_index(output_file: &mut File, files: &Vec<::PackedFile>, version: &::PFHVersion, bitmask: &::PFHFlags) -> Result<(), ::BuildPackError> {
     for file in files {
         output_file.write_u32::<LittleEndian>(file.data.len() as u32)?;
+        if bitmask.contains(::PFHFlags::HAS_INDEX_WITH_TIMESTAMPS) {
+            output_file.write_u32::<LittleEndian>(file.timestamp.unwrap_or(0))?
+        }
+        if *version == ::PFHVersion::PFH5 && !bitmask.contains(::PFHFlags::HAS_BIG_HEADER) {
+            output_file.write_u8(0)?;
+        }
         output_file.write_all(file.path.as_ref())?;
         output_file.write_u8(0)?;
     }
@@ -101,7 +109,7 @@ pub fn build_pack_from_memory(input_files: &Vec<::PackedFile>, output_file: &mut
         index_size += input_file.timestamp.unwrap_or(0);
     }
     write_header(output_file, version, bitmask, file_type, index_size, &input_files)?;
-    write_index(output_file, input_files)?;
+    write_index(output_file, input_files, version, bitmask)?;
     write_content(output_file, input_files)?;
     Ok(())
 }
