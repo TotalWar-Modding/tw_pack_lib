@@ -1,6 +1,7 @@
 extern crate byteorder;
 #[macro_use]
 extern crate bitflags;
+extern crate cached_file_view;
 
 mod build;
 mod parse;
@@ -8,6 +9,7 @@ mod crypto;
 
 use std::fs::File;
 use std::path::Path;
+use cached_file_view::FileView;
 
 static DEBUG: bool = false;
 const PFH5_PREAMBLE: u32 = 0x35484650;
@@ -63,14 +65,13 @@ bitflags! {
     }
 }
 
-#[derive(Debug)]
 pub struct PackFile {
-    raw_data: Vec<u8>
+    view: FileView
 }
 
 impl PackFile {
     pub fn get_version(&self) -> ::PFHVersion {
-        match parse::get_preamble(&self.raw_data) {
+        match parse::get_preamble(&self.view) {
             PFH5_PREAMBLE => PFHVersion::PFH5,
             PFH4_PREAMBLE => PFHVersion::PFH4,
             _ => unreachable!()
@@ -78,7 +79,7 @@ impl PackFile {
     }
 
     pub fn get_file_type(&self) -> PFHFileType {
-        match parse::get_file_type(&self.raw_data) {
+        match parse::get_file_type(&self.view) {
             FILE_TYPE_BOOT => PFHFileType::Boot,
             FILE_TYPE_RELEASE => PFHFileType::Release,
             FILE_TYPE_PATCH => PFHFileType::Patch,
@@ -89,11 +90,11 @@ impl PackFile {
     }
 
     pub fn get_bitmask(&self) -> ::PFHFlags {
-        parse::get_bitmask(&self.raw_data)
+        parse::get_bitmask(&self.view)
     }
 
     pub fn get_timestamp(&self) -> u32 {
-        parse::get_timestamp(&self.raw_data)
+        parse::get_timestamp(&self.view)
     }
 }
 
@@ -107,7 +108,8 @@ pub struct PackedFile {
 #[derive(Debug)]
 pub enum ParsePackError {
     InvalidHeaderError,
-    InvalidFileError
+    InvalidFileError,
+    IOError
 }
 
 #[derive(Debug)]
@@ -117,8 +119,8 @@ pub enum BuildPackError {
     IOError
 }
 
-pub fn parse_pack<'a>(bytes: Vec<u8>) -> Result<::PackFile, ParsePackError> {
-    parse::parse_pack(bytes)
+pub fn parse_pack<'a>(input_file: File) -> Result<::PackFile, ParsePackError> {
+    parse::parse_pack(input_file)
 }
 
 pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: &PFHVersion, bitmask: &PFHFlags, file_type: &::PFHFileType, pfh_timestamp: u32) -> Result<(), BuildPackError> {
