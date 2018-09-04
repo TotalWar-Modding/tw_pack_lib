@@ -10,4 +10,4 @@ license = "LGPL-3.0+"
 [dependencies]
 byteorder = "1.2"
 bitflags = "1.0"
-cached_file_view = "0.1.1"
+cached_file_view = "0.1.2"

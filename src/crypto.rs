@@ -1,6 +1,8 @@
 use std::num::Wrapping;
-use byteorder::LittleEndian;
+use std::ops::Range;
+use std::vec::Vec;
 use byteorder::ByteOrder;
+use byteorder::LittleEndian;
 use byteorder::WriteBytesExt;
 
 static INDEX_KEY: &str = "L2{B3dPL7L*v&+Q3ZsusUhy[BGQn(Uq$f>JQdnvdlf{-K:>OssVDr#TlYU|13B}r";
@@ -36,13 +38,15 @@ pub fn decrypt_index_item_filename(ciphertext: &[u8], key: u8) -> (Vec<u8>, u32)
 static FILE_KEY: Wrapping<u64> = Wrapping(0x8FEB2A6740A6920E);
 
 pub fn decrypt_file(ciphertext: &[u8], length: usize, verbose: bool) -> Vec<u8> {
-    assert!(ciphertext.len() % 8 == 0, "ciphertext is not a multiple of 8");
     let mut plaintext = Vec::with_capacity(ciphertext.len());
+    let padded_length = ciphertext.len() + 7 & !7;
+    assert!(padded_length % 8 == 0);
+    assert!(padded_length < ciphertext.len() + 8);
     let mut edi: u32 = 0;
     let mut esi = 0;
     let mut eax;
     let mut edx;
-    for _ in 0..ciphertext.len()/8 {
+    for _ in 0..padded_length/8 {
         // push 0x8FEB2A67
         // push 0x40A6920E
         // mov eax, edi
@@ -62,7 +66,7 @@ pub fn decrypt_file(ciphertext: &[u8], length: usize, verbose: bool) -> Vec<u8> 
         }
 
         // xor eax, [ebx+esi]
-        eax ^= LittleEndian::read_u32(&ciphertext[esi..esi + 4]);
+        eax ^= read_padded_u32(&ciphertext, esi..esi + 4);
         if verbose {
             println!("eax: {:X}", eax);
         }
@@ -71,7 +75,7 @@ pub fn decrypt_file(ciphertext: &[u8], length: usize, verbose: bool) -> Vec<u8> 
         edi += 8;
 
         // xor edx, [ebx+esi+4]
-        let _edx = LittleEndian::read_u32(&ciphertext[esi + 4..esi + 8]);
+        let _edx = read_padded_u32(&ciphertext, esi + 4..esi + 8);
         if verbose {
             println!("_edx {:X}", _edx);
         }
@@ -92,4 +96,18 @@ pub fn decrypt_file(ciphertext: &[u8], length: usize, verbose: bool) -> Vec<u8> 
     }
     plaintext.truncate(length);
     plaintext
+}
+
+fn read_padded_u32(source: &[u8], range: Range<usize>) -> u32 {
+    if range.end <= source.len() {
+        LittleEndian::read_u32(&source[range])
+    } else {
+        let mut v = Vec::with_capacity(4);
+        if range.start < source.len() {
+            v.extend_from_slice(&source[range.start..source.len()]);
+        }
+        v.resize(4, 0);
+        debug_assert!(v.len() == 4);
+        LittleEndian::read_u32(&v)
+    }
 }
