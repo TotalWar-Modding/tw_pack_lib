@@ -110,7 +110,9 @@ impl PackedFile {
         let packed_file_data = &mut *self.data.lock().unwrap();
         let data = match &packed_file_data.inner {
             PackedFileDataType::LazyLoading(lazy) => {
-                println!("PackedFile get_data ({:x?})", &lazy.range);
+                if DEBUG {
+                    println!("PackedFile get_data (0x{:x?}-0x{:x?})", lazy.range.start, lazy.range.end);
+                }
                 if lazy.is_encrypted {
                     let plaintext = crypto::decrypt_file(&lazy.file_view.read(&lazy.range)?.to_vec(), (lazy.range.end - lazy.range.start) as usize, false);
                     assert!(plaintext.len() as u64 == lazy.range.end - lazy.range.start, format!("{} != {}", plaintext.len(), lazy.range.end - lazy.range.start));
