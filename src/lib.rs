@@ -16,7 +16,6 @@ use std::fmt;
 use std::ops::Deref;
 use std::path::Path;
 use cached_file_view::FileView;
-use cached_file_view::FileViewError;
 
 static DEBUG: bool = false;
 const PFH5_PREAMBLE: u32 = 0x35484650;
