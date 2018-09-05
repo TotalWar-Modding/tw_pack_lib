@@ -2,7 +2,7 @@
 name = "tw_pack_lib"
 version = "0.1.13"
 authors = ["Benedikt Constantin Radtke <benediktradtke@gmail.com>"]
-description = "A Total War: Arena pack file library"
+description = "A Total War series pack file library"
 keywords = ["Total", "War", "Arena", "pack"]
 repository = "https://github.com/TotalWarArena-Modding/twa_pack_lib"
 license = "LGPL-3.0+"
