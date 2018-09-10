@@ -1,6 +1,6 @@
 [package]
 name = "tw_pack_lib"
-version = "0.1.15"
+version = "0.1.16"
 authors = ["Benedikt Constantin Radtke <benediktradtke@gmail.com>"]
 description = "A Total War series pack file library"
 keywords = ["Total", "War", "pack"]
