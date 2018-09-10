@@ -119,6 +119,9 @@ pub fn build_pack_from_memory<P: Borrow<::PackedFile>>(input_files: &Vec<P>, out
         if bitmask.contains(::PFHFlags::HAS_INDEX_WITH_TIMESTAMPS) {
             index_size += 4;
         }
+        if version == ::PFHVersion::PFH5 && !bitmask.contains(::PFHFlags::HAS_BIG_HEADER) {
+            index_size += 1;
+        }
     }
     write_header(output_file, version, bitmask, file_type, pfh_timestamp, index_size, &input_files)?;
     write_index(output_file, input_files, version, bitmask)?;
