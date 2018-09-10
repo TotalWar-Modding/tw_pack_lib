@@ -65,7 +65,7 @@ pub fn get_preamble(view: &FileView) -> u32 {
 }
 
 pub fn get_file_type(view: &FileView) -> u32 {
-    LittleEndian::read_u32(&view.read(0x00..0x04).unwrap().to_vec()) & 0xf
+    LittleEndian::read_u32(&view.read(0x04..0x08).unwrap().to_vec()) & 0xf
 }
 
 pub fn get_bitmask(view: &FileView) -> ::PFHFlags {
