@@ -200,7 +200,6 @@ pub enum ParsePackError {
 
 #[derive(Debug)]
 pub enum BuildPackError {
-    EmptyInputError,
     InputTooBigError,
     IOError
 }

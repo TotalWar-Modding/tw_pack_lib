@@ -100,17 +100,10 @@ fn write_content<P: Borrow<::PackedFile>>(output_file: &mut File, files: &Vec<P>
 
 pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: ::PFHVersion, bitmask: ::PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<(), ::BuildPackError> {
     let input_files = traverse_directory(input_directory, "".to_string())?;
-    if input_files.len() < 1 {
-        return Err(::BuildPackError::EmptyInputError)
-    }
     build_pack_from_memory(&input_files, output_file, version, bitmask, file_type, pfh_timestamp)
 }
 
 pub fn build_pack_from_memory<P: Borrow<::PackedFile>>(input_files: &Vec<P>, output_file: &mut File, version: ::PFHVersion, bitmask: ::PFHFlags,  file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<(), ::BuildPackError> {
-    if input_files.len() < 1 {
-        return Err(::BuildPackError::EmptyInputError)
-    }
-
     let mut index_size = 0;
     for input_file in input_files {
         let input_file = input_file.borrow();
