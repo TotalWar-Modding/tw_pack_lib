@@ -13,7 +13,6 @@ use std::borrow::Borrow;
 use std::sync::Arc;
 use std::fs::File;
 use std::fmt;
-use std::ops::Deref;
 use std::path::Path;
 use cached_file_view::FileView;
 

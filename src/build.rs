@@ -56,7 +56,7 @@ fn write_header<P: Borrow<::PackedFile>>(output_file: &mut File, version: ::PFHV
     output_file.write_u32::<LittleEndian>(index_size)?;
     match version {
         ::PFHVersion::PFH4  => {
-            output_file.write_u32::<LittleEndian>(0)?; // timestamp
+            output_file.write_u32::<LittleEndian>(pfh_timestamp)?;
         },
         ::PFHVersion::PFH5 => {
             if bitmask.contains(::PFHFlags::HAS_BIG_HEADER) {
