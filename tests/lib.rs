@@ -16,7 +16,7 @@ use tw_pack_lib::PFHFlags;
 fn test_repack() {
     fs::copy("tests/twa_boot.pack.bk", "tests/repack_twa_boot.pack").unwrap();
     let f = File::open(Path::new("tests/repack_twa_boot.pack")).expect("file not found");
-    let pack = tw_pack_lib::parse_pack(f).unwrap();
+    let pack = tw_pack_lib::parse_pack(f, true).unwrap();
     let packed_files: Vec<PackedFile> = pack.into_iter().collect();
 
     for packed_file in &packed_files {

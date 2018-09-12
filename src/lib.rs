@@ -204,8 +204,14 @@ pub enum BuildPackError {
     IOError
 }
 
-pub fn parse_pack<'a>(input_file: File) -> Result<::PackFile, ParsePackError> {
-    parse::parse_pack(input_file)
+pub fn parse_pack<'a>(input_file: File, load_lazy: bool) -> Result<::PackFile, ParsePackError> {
+    let pack_file = parse::parse_pack(input_file)?;
+    if !load_lazy {
+        for packed_file in pack_file.into_iter() {
+            packed_file.get_data()?;
+        }
+    }
+    Ok(pack_file)
 }
 
 pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: PFHVersion, bitmask: PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<(), BuildPackError> {
