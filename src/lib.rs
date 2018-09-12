@@ -167,7 +167,22 @@ impl PackedFile {
 
 impl Clone for PackedFile {
     fn clone(&self) -> Self {
-        PackedFile::new(self.timestamp, self.path.clone(), self.get_data().unwrap().deref().clone())
+        match &self.data.lock().unwrap().inner {
+            &PackedFileDataType::DataBacked(ref data) => PackedFile {
+                data: Mutex::new(PackedFileData {
+                    inner: PackedFileDataType::DataBacked(data.clone())
+                }),
+                timestamp: self.timestamp,
+                path: self.path.clone()
+            },
+            &PackedFileDataType::LazyLoading(ref lazy) => PackedFile {
+                data: Mutex::new(PackedFileData {
+                    inner: PackedFileDataType::LazyLoading(lazy.clone())
+                }),
+                timestamp: self.timestamp,
+                path: self.path.clone()
+            }
+        }
     }
 }
 

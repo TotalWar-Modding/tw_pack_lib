@@ -18,7 +18,7 @@ pub fn decrypt_index_item_file_length(item_index: u32, ciphertext: u32) -> u32 {
     decrypted
 }
 
-pub fn decrypt_index_item_filename(ciphertext: &[u8], key: u8) -> (Vec<u8>, u32){
+pub fn decrypt_index_item_filename(ciphertext: &[u8], key: u8) -> (Vec<u8>, u32) {
     let mut buffer: Vec<u8> = Vec::with_capacity(100);
     let mut idx = 0;
     loop {
