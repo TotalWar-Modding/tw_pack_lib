@@ -6,3 +6,5 @@
 *.pack
 *.bk
 Cargo.lock
+*.sublime-project
+*.sublime-workspace
