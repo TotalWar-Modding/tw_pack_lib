@@ -1,6 +1,6 @@
-extern crate byteorder;
 #[macro_use]
 extern crate bitflags;
+extern crate byteorder;
 extern crate cached_file_view;
 
 mod build;
@@ -11,6 +11,7 @@ use parse::LazyLoadingPackedFile;
 
 use std::borrow::Borrow;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::fs::File;
 use std::fmt;
 use std::path::Path;
@@ -25,41 +26,6 @@ const FILE_TYPE_PATCH: u32      = 2;
 const FILE_TYPE_MOD: u32        = 3;
 const FILE_TYPE_MOVIE: u32      = 4;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PFHVersion {
-    PFH5,
-    PFH4
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PFHFileType {
-    Boot,
-    Release,
-    Patch,
-    Mod,
-    Movie
-}
-
-impl PFHFileType {
-    pub fn get_value(&self) -> u32 {
-        match *self {
-            PFHFileType::Boot => FILE_TYPE_BOOT,
-            PFHFileType::Release => FILE_TYPE_RELEASE,
-            PFHFileType::Patch => FILE_TYPE_PATCH,
-            PFHFileType::Mod => FILE_TYPE_MOD,
-            PFHFileType::Movie => FILE_TYPE_MOVIE
-        }
-    }
-}
-
-impl PFHVersion {
-    pub(crate) fn get_preamble(&self) -> u32 {
-        match *self {
-            PFHVersion::PFH5 => PFH5_PREAMBLE,
-            PFHVersion::PFH4 => PFH4_PREAMBLE
-        }
-    }
-}
 
 bitflags! {
     pub struct PFHFlags: u32 {
@@ -70,9 +36,80 @@ bitflags! {
     }
 }
 
+/// This enum represents the **Version** of a PackFile.
+///
+/// The possible values are:
+/// - `PFH5`: Used in Warhammer 2 and Arena.
+/// - `PFH4`: Used in Warhammer 1, Attila, Rome 2, and Thrones of Brittania.
+/// - `Unsupported`: Wildcard for any PackFile with a *Version* the lib doesn't support.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PFHVersion {
+    PFH5,
+    PFH4,
+    Unsupported,
+}
+
+/// This enum represents the **Type** of a PackFile. 
+///
+/// The possible types are, in the order they'll load when the game starts:
+/// - `Boot`: Used in CA PackFiles, not useful for modding.
+/// - `Release`: Used in CA PackFiles, not useful for modding.
+/// - `Patch`: Used in CA PackFiles, not useful for modding.
+/// - `Mod`: Used for mods. PackFiles of this type are only loaded in the game if they are enabled in the Mod Manager/Launcher.
+/// - `Movie`: Used in CA PackFiles and for some special mods. Unlike `Mod` PackFiles, these ones always get loaded.
+/// - `Other(u32)`: Wildcard for any type that doesn't fit in any of the other categories. The type's value is stored in the Variant.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PFHFileType {
+    Boot,
+    Release,
+    Patch,
+    Mod,
+    Movie,
+    Other(u32),
+}
+
 #[derive(Debug, Clone)]
 pub struct PackFile {
     view: FileView
+}
+
+pub struct PackedFile {
+    pub timestamp: Option<u32>,
+    pub path: String,
+    data: Mutex<PackedFileData>
+}
+
+#[derive(Clone)]
+pub(crate) enum PackedFileDataType {
+    DataBacked(Arc<Vec<u8>>),
+    LazyLoading(LazyLoadingPackedFile)
+}
+
+pub(crate) struct PackedFileData {
+    inner: PackedFileDataType
+}
+
+impl PFHFileType {
+    pub fn get_value(&self) -> u32 {
+        match *self {
+            PFHFileType::Boot => FILE_TYPE_BOOT,
+            PFHFileType::Release => FILE_TYPE_RELEASE,
+            PFHFileType::Patch => FILE_TYPE_PATCH,
+            PFHFileType::Mod => FILE_TYPE_MOD,
+            PFHFileType::Movie => FILE_TYPE_MOVIE,
+            PFHFileType::Other(value) => value
+        }
+    }
+}
+
+impl PFHVersion {
+    pub(crate) fn get_preamble(&self) -> u32 {
+        match *self {
+            PFHVersion::PFH5 => PFH5_PREAMBLE,
+            PFHVersion::PFH4 => PFH4_PREAMBLE,
+            _ => unreachable!()
+        }
+    }
 }
 
 impl PackFile {
@@ -105,6 +142,17 @@ impl PackFile {
 }
 
 impl PackedFile {
+
+    pub fn new(timestamp: Option<u32>, path: String, data: Vec<u8>) -> Self {
+        PackedFile {
+            data: Mutex::new(PackedFileData {
+                inner: PackedFileDataType::DataBacked(Arc::new(data))
+            }),
+            timestamp: timestamp,
+            path: path
+        }
+    }
+
     pub fn get_data(&self) -> Result<Arc<Vec<u8>>, ParsePackError> {
         let packed_file_data = &mut *self.data.lock().unwrap();
         let data = match &packed_file_data.inner {
@@ -131,36 +179,6 @@ impl PackedFile {
     pub fn set_data(&mut self, data: Arc<Vec<u8>>) {
         let packed_file_data = &mut *self.data.lock().unwrap();
         packed_file_data.inner = PackedFileDataType::DataBacked(data);
-    }
-}
-
-#[derive(Clone)]
-pub(crate) enum PackedFileDataType {
-    DataBacked(Arc<Vec<u8>>),
-    LazyLoading(LazyLoadingPackedFile)
-}
-
-pub(crate) struct PackedFileData {
-    inner: PackedFileDataType
-}
-
-use std::sync::Mutex;
-
-pub struct PackedFile {
-    pub timestamp: Option<u32>,
-    pub path: String,
-    data: Mutex<PackedFileData>
-}
-
-impl PackedFile {
-    pub fn new(timestamp: Option<u32>, path: String, data: Vec<u8>) -> Self{
-        PackedFile {
-            data: Mutex::new(PackedFileData {
-                inner: PackedFileDataType::DataBacked(Arc::new(data))
-            }),
-            timestamp: timestamp,
-            path: path
-        }
     }
 }
 

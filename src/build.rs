@@ -70,6 +70,7 @@ fn write_header<P: Borrow<::PackedFile>>(output_file: &mut File, version: ::PFHV
                 output_file.write_u32::<LittleEndian>(pfh_timestamp)?;
             }
         }
+        _ => unreachable!()
     }
     Ok(())
 }
