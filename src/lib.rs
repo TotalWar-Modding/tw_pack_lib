@@ -1,3 +1,25 @@
+//! A library to create/manipulate Total War PackFiles.
+//!
+//! Modern Total War games (since Empire: Total War) have their data packed inside `.pack` files.
+//! This library allows you to *open* those PackFiles and manipulate them however you want.
+//! 
+//! Not all Modern Total War games are supported yet. The supported ones are:
+//! - Warhammer 2.
+//! - Warhammer.
+//! - Attila.
+//! - Rome 2.
+//! - Arena.
+//!
+//! Games that will be supported in the future are:
+//! - Shogun 2.
+//! - Napoleon.
+//! - Empire.
+//! - Thrones of Brittania.
+//! - Three Kingdoms.
+//!
+//! Keep in mind that this lib only gives you the ability to *open* and *edit* PackFiles. If you want 
+//! to edit the PackedFiles inside (like editing a value in a table), that's not covered by this lib.
+
 #[macro_use]
 extern crate bitflags;
 extern crate byteorder;
@@ -26,8 +48,15 @@ const FILE_TYPE_PATCH: u32      = 2;
 const FILE_TYPE_MOD: u32        = 3;
 const FILE_TYPE_MOVIE: u32      = 4;
 
-
 bitflags! {
+
+    /// This represents the bitmasks a PackFile can have applied to his type.
+    ///
+    /// The possible bitmasks are:
+    /// - `HAS_BIG_HEADER`: Used to specify that the header of the PackFile is extended by 20 bytes. Used in Arena.
+    /// - `HAS_ENCRYPTED_INDEX`: Used to specify that the PackedFile Index is encrypted. Used in Arena.
+    /// - `HAS_INDEX_WITH_TIMESTAMPS`: Used to specify that the PackedFile Index contains a timestamp of evey PackFile.
+    /// - `HAS_ENCRYPTED_CONTENT`: Used to specify that the PackedFile's data is encrypted. Seen in `music.pack` PackFiles and in Arena.
     pub struct PFHFlags: u32 {
         const HAS_BIG_HEADER            = 0b0000_0001_0000_0000;
         const HAS_ENCRYPTED_INDEX       = 0b0000_0000_1000_0000;
@@ -51,12 +80,12 @@ pub enum PFHVersion {
 
 /// This enum represents the **Type** of a PackFile. 
 ///
-/// The possible types are, in the order they'll load when the game starts:
-/// - `Boot`: Used in CA PackFiles, not useful for modding.
-/// - `Release`: Used in CA PackFiles, not useful for modding.
-/// - `Patch`: Used in CA PackFiles, not useful for modding.
-/// - `Mod`: Used for mods. PackFiles of this type are only loaded in the game if they are enabled in the Mod Manager/Launcher.
-/// - `Movie`: Used in CA PackFiles and for some special mods. Unlike `Mod` PackFiles, these ones always get loaded.
+/// The possible types are, in the order they'll load when the game starts (their numeric value is the number besides them):
+/// - `Boot` **(0)**: Used in CA PackFiles, not useful for modding.
+/// - `Release` **(1)**: Used in CA PackFiles, not useful for modding.
+/// - `Patch` **(2)**: Used in CA PackFiles, not useful for modding.
+/// - `Mod` **(3)**: Used for mods. PackFiles of this type are only loaded in the game if they are enabled in the Mod Manager/Launcher.
+/// - `Movie` **(4)**: Used in CA PackFiles and for some special mods. Unlike `Mod` PackFiles, these ones always get loaded.
 /// - `Other(u32)`: Wildcard for any type that doesn't fit in any of the other categories. The type's value is stored in the Variant.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PFHFileType {
@@ -90,6 +119,8 @@ pub(crate) struct PackedFileData {
 }
 
 impl PFHFileType {
+
+    /// This function returns the PackFile's **Type** in `u32` format. To know what value corresponds with what type, check their definition's comment.
     pub fn get_value(&self) -> u32 {
         match *self {
             PFHFileType::Boot => FILE_TYPE_BOOT,
@@ -103,6 +134,8 @@ impl PFHFileType {
 }
 
 impl PFHVersion {
+
+    /// This function returns the PackFile's **Preamble** or **Id** (his 4 first bytes) in `u32` format.
     pub(crate) fn get_preamble(&self) -> u32 {
         match *self {
             PFHVersion::PFH5 => PFH5_PREAMBLE,
@@ -143,6 +176,12 @@ impl PackFile {
 
 impl PackedFile {
 
+    /// This function creates a new PackedFile with the provided info.
+    ///
+    /// It requires:
+    /// - `timestamp`: a timestamp in `u32` format of the PackedFile, usually his `last modified` date. Optional.
+    /// - `path`: a path of type `a/b/c.whatever`.
+    /// - `data`: the data to be contained in the PackedFile. For an empty PackedFile, just pass an empty vector.
     pub fn new(timestamp: Option<u32>, path: String, data: Vec<u8>) -> Self {
         PackedFile {
             data: Mutex::new(PackedFileData {
