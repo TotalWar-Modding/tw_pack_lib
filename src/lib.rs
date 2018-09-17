@@ -176,7 +176,7 @@ impl PackFile {
             FILE_TYPE_PATCH => PFHFileType::Patch,
             FILE_TYPE_MOD => PFHFileType::Mod,
             FILE_TYPE_MOVIE => PFHFileType::Movie,
-            _ => unreachable!()
+            value => PFHFileType::Other(value)
         }
     }
 
