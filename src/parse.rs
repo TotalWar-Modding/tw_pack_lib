@@ -200,13 +200,12 @@ impl<'a> PackIndexIterator<'a> {
             Ok(::PackedFile {
                 timestamp: timestamp,
                 path: String::from_utf8(file_path).map_err(|_| Error::IndexIteratorError)?,
-                data: Mutex::new(::PackedFileData {
-                    inner: ::PackedFileDataType::LazyLoading(LazyLoadingPackedFile {
+                data: Mutex::new(::PackedFileData::LazyLoading(LazyLoadingPackedFile {
                         file_view: (*self.view).clone(),
                         is_encrypted: has_encrypted_content(&self.view),
                         range: start..end
                     })
-                })
+                )
             })
         } else {
             Err(Error::IndexIteratorError)

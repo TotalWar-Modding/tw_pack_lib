@@ -111,13 +111,9 @@ pub struct PackedFile {
 }
 
 #[derive(Clone)]
-pub(crate) enum PackedFileDataType {
+pub(crate) enum PackedFileData {
     DataBacked(Arc<Vec<u8>>),
     LazyLoading(LazyLoadingPackedFile)
-}
-
-pub(crate) struct PackedFileData {
-    inner: PackedFileDataType
 }
 
 impl PFHFileType {
@@ -186,9 +182,7 @@ impl PackedFile {
     /// - `data`: the data to be contained in the PackedFile. For an empty PackedFile, just pass an empty vector.
     pub fn new(timestamp: Option<u32>, path: String, data: Vec<u8>) -> Self {
         PackedFile {
-            data: Mutex::new(PackedFileData {
-                inner: PackedFileDataType::DataBacked(Arc::new(data))
-            }),
+            data: Mutex::new(PackedFileData::DataBacked(Arc::new(data))),
             timestamp: timestamp,
             path: path
         }
@@ -196,8 +190,8 @@ impl PackedFile {
 
     pub fn get_data(&self) -> Result<Arc<Vec<u8>>> {
         let packed_file_data = &mut *self.data.lock().unwrap();
-        let data = match &packed_file_data.inner {
-            PackedFileDataType::LazyLoading(lazy) => {
+        let data = match &packed_file_data {
+            PackedFileData::LazyLoading(lazy) => {
                 if DEBUG {
                     println!("PackedFile get_data (0x{:x?}-0x{:x?})", lazy.range.start, lazy.range.end);
                 }
@@ -209,34 +203,30 @@ impl PackedFile {
                     Arc::new(lazy.file_view.read(&lazy.range)?.to_vec())
                 }
             },
-            PackedFileDataType::DataBacked(data) => {
+            PackedFileData::DataBacked(data) => {
                 return Ok(data.clone());
             }
         };
-        packed_file_data.inner = PackedFileDataType::DataBacked(data.clone());
+        *packed_file_data = PackedFileData::DataBacked(data.clone());
         Ok(data)
     }
 
     pub fn set_data(&mut self, data: Arc<Vec<u8>>) {
         let packed_file_data = &mut *self.data.lock().unwrap();
-        packed_file_data.inner = PackedFileDataType::DataBacked(data);
+        *packed_file_data = PackedFileData::DataBacked(data);
     }
 }
 
 impl Clone for PackedFile {
     fn clone(&self) -> Self {
-        match &self.data.lock().unwrap().inner {
-            &PackedFileDataType::DataBacked(ref data) => PackedFile {
-                data: Mutex::new(PackedFileData {
-                    inner: PackedFileDataType::DataBacked(data.clone())
-                }),
+        match &*self.data.lock().unwrap() {
+            PackedFileData::DataBacked(ref data) => PackedFile {
+                data: Mutex::new(PackedFileData::DataBacked(data.clone())),
                 timestamp: self.timestamp,
                 path: self.path.clone()
             },
-            &PackedFileDataType::LazyLoading(ref lazy) => PackedFile {
-                data: Mutex::new(PackedFileData {
-                    inner: PackedFileDataType::LazyLoading(lazy.clone())
-                }),
+            PackedFileData::LazyLoading(ref lazy) => PackedFile {
+                data: Mutex::new(PackedFileData::LazyLoading(lazy.clone())),
                 timestamp: self.timestamp,
                 path: self.path.clone()
             }
