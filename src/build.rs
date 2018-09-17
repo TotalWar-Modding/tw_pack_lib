@@ -2,28 +2,15 @@ use std::borrow::Borrow;
 use std::fs::File;
 use std::fs;
 use std::io::Read;
-use std::io;
 use std::io::Write;
 use std::path::Path;
 
 use byteorder::LittleEndian;
 use byteorder::WriteBytesExt;
-use cached_file_view::FileViewError;
 
+use error::Result;
 
-impl From<io::Error> for ::BuildPackError {
-    fn from(_: io::Error) -> Self {
-        ::BuildPackError::IOError
-    }
-}
-
-impl From<FileViewError> for ::BuildPackError {
-    fn from(_: FileViewError) -> Self {
-        ::BuildPackError::IOError
-    }
-}
-
-fn traverse_directory(directory: &Path, prefix: String) -> Result<Vec<::PackedFile>, ::BuildPackError> {
+fn traverse_directory(directory: &Path, prefix: String) -> Result<Vec<::PackedFile>> {
     let mut files = vec!();
     for entry in fs::read_dir(directory)? {
         let entry = entry?;
@@ -47,7 +34,7 @@ fn traverse_directory(directory: &Path, prefix: String) -> Result<Vec<::PackedFi
     Ok(files)
 }
 
-fn write_header<P: Borrow<::PackedFile>>(output_file: &mut File, version: ::PFHVersion, bitmask: ::PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32, index_size: u32, files: &Vec<P>) -> Result<(), ::BuildPackError> {
+fn write_header<P: Borrow<::PackedFile>>(output_file: &mut File, version: ::PFHVersion, bitmask: ::PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32, index_size: u32, files: &Vec<P>) -> Result<()> {
     output_file.write_u32::<LittleEndian>(version.get_preamble())?;
     output_file.write_u32::<LittleEndian>(bitmask.bits | file_type.get_value())?;
     output_file.write_u32::<LittleEndian>(0)?; // PF Index Count
@@ -75,7 +62,7 @@ fn write_header<P: Borrow<::PackedFile>>(output_file: &mut File, version: ::PFHV
     Ok(())
 }
 
-fn write_index<P: Borrow<::PackedFile>>(output_file: &mut File, files: &Vec<P>, version: ::PFHVersion, bitmask: ::PFHFlags) -> Result<(), ::BuildPackError> {
+fn write_index<P: Borrow<::PackedFile>>(output_file: &mut File, files: &Vec<P>, version: ::PFHVersion, bitmask: ::PFHFlags) -> Result<()> {
     for file in files {
         let file = file.borrow();
         output_file.write_u32::<LittleEndian>(file.get_data()?.len() as u32)?;
@@ -92,19 +79,19 @@ fn write_index<P: Borrow<::PackedFile>>(output_file: &mut File, files: &Vec<P>, 
     Ok(())
 }
 
-fn write_content<P: Borrow<::PackedFile>>(output_file: &mut File, files: &Vec<P>) -> Result<(), ::BuildPackError> {
+fn write_content<P: Borrow<::PackedFile>>(output_file: &mut File, files: &Vec<P>) -> Result<()> {
     for file in files {
         output_file.write_all(&file.borrow().get_data()?)?;
     }
     Ok(())
 }
 
-pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: ::PFHVersion, bitmask: ::PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<(), ::BuildPackError> {
+pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: ::PFHVersion, bitmask: ::PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<()> {
     let input_files = traverse_directory(input_directory, "".to_string())?;
     build_pack_from_memory(&input_files, output_file, version, bitmask, file_type, pfh_timestamp)
 }
 
-pub fn build_pack_from_memory<P: Borrow<::PackedFile>>(input_files: &Vec<P>, output_file: &mut File, version: ::PFHVersion, bitmask: ::PFHFlags,  file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<(), ::BuildPackError> {
+pub fn build_pack_from_memory<P: Borrow<::PackedFile>>(input_files: &Vec<P>, output_file: &mut File, version: ::PFHVersion, bitmask: ::PFHFlags,  file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<()> {
     let mut index_size = 0;
     for input_file in input_files {
         let input_file = input_file.borrow();

@@ -26,9 +26,11 @@ extern crate byteorder;
 extern crate cached_file_view;
 
 mod build;
-mod parse;
 mod crypto;
+pub mod error;
+mod parse;
 
+use error::Result;
 use parse::LazyLoadingPackedFile;
 
 use std::borrow::Borrow;
@@ -192,7 +194,7 @@ impl PackedFile {
         }
     }
 
-    pub fn get_data(&self) -> Result<Arc<Vec<u8>>, ParsePackError> {
+    pub fn get_data(&self) -> Result<Arc<Vec<u8>>> {
         let packed_file_data = &mut *self.data.lock().unwrap();
         let data = match &packed_file_data.inner {
             PackedFileDataType::LazyLoading(lazy) => {
@@ -248,20 +250,7 @@ impl fmt::Debug for PackedFile {
     }
 }
 
-#[derive(Debug)]
-pub enum ParsePackError {
-    InvalidHeaderError,
-    InvalidFileError,
-    IOError
-}
-
-#[derive(Debug)]
-pub enum BuildPackError {
-    InputTooBigError,
-    IOError
-}
-
-pub fn parse_pack<'a>(input_file: File, load_lazy: bool) -> Result<::PackFile, ParsePackError> {
+pub fn parse_pack<'a>(input_file: File, load_lazy: bool) -> Result<::PackFile> {
     let pack_file = parse::parse_pack(input_file)?;
     if !load_lazy {
         for packed_file in pack_file.into_iter() {
@@ -271,10 +260,10 @@ pub fn parse_pack<'a>(input_file: File, load_lazy: bool) -> Result<::PackFile, P
     Ok(pack_file)
 }
 
-pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: PFHVersion, bitmask: PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<(), BuildPackError> {
+pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: PFHVersion, bitmask: PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<()> {
     build::build_pack_from_filesystem(input_directory, output_file, version, bitmask, file_type, pfh_timestamp)
 }
 
-pub fn build_pack_from_memory<P: Borrow<PackedFile>>(input: &Vec<P>, output_file: &mut File, version: PFHVersion, bitmask: PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<(), BuildPackError> {
+pub fn build_pack_from_memory<P: Borrow<PackedFile>>(input: &Vec<P>, output_file: &mut File, version: PFHVersion, bitmask: PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<()> {
     build::build_pack_from_memory(input, output_file, version, bitmask, file_type, pfh_timestamp)
 }

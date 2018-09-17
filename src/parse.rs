@@ -6,7 +6,8 @@ use std::sync::Mutex;
 use byteorder::LittleEndian;
 use byteorder::ByteOrder;
 use cached_file_view::FileView;
-use cached_file_view::FileViewError;
+
+use error::{Error, Result};
 
 pub struct PackIndexIterator<'a> {
     view: &'a FileView,
@@ -14,8 +15,6 @@ pub struct PackIndexIterator<'a> {
     index_position: u32,
     content_position: u32
 }
-
-struct PackIndexIteratorError {}
 
 #[derive(Clone)]
 pub struct LazyLoadingPackedFile {
@@ -127,11 +126,11 @@ fn has_padding(raw_data: &FileView) -> bool {
 }
 
 impl<'a> PackIndexIterator<'a> {
-    fn read_index_u32(&self) -> Result<u32, PackIndexIteratorError> {
+    fn read_index_u32(&self) -> Result<u32> {
         Ok(LittleEndian::read_u32(&self.view.read(self.index_position as u64..self.index_position as u64 + 4 as u64)?.to_vec()))
     }
 
-    fn get_next(&mut self) -> Result<::PackedFile, PackIndexIteratorError> {
+    fn get_next(&mut self) -> Result<::PackedFile> {
         if self.next_item >= 1 {
             self.next_item -= 1;
 
@@ -142,19 +141,19 @@ impl<'a> PackIndexIterator<'a> {
             } else {
                 item_length
             };
-            self.index_position = self.index_position.checked_add(4).ok_or(PackIndexIteratorError{})?;
+            self.index_position = self.index_position.checked_add(4).ok_or(Error::IndexIteratorError)?;
 
             // read 4 bytes whatever, if present
             let timestamp = if has_index_with_timestamps(&self.view) {
                 let d = self.read_index_u32()?;
-                self.index_position = self.index_position.checked_add(4).ok_or(PackIndexIteratorError{})?;
+                self.index_position = self.index_position.checked_add(4).ok_or(Error::IndexIteratorError)?;
                 Some(d)
             } else {
                 None
             };
 
             if get_preamble(&self.view) == ::PFH5_PREAMBLE && !has_big_header(&self.view) {
-                self.index_position = self.index_position.checked_add(1).ok_or(PackIndexIteratorError{})?;
+                self.index_position = self.index_position.checked_add(1).ok_or(Error::IndexIteratorError)?;
             }
 
             let remaining_index_size = get_index_size(&self.view) - (self.index_position - get_static_header_size(&self.view) - get_extended_header_size(&self.view));
@@ -171,7 +170,7 @@ impl<'a> PackIndexIterator<'a> {
                     }
                     buf.push(c);
                     if i >= remaining_index_size {
-                        return Err(PackIndexIteratorError{});
+                        return Err(Error::IndexIteratorError);
                     }
                 }
                 (buf, i)
@@ -181,7 +180,7 @@ impl<'a> PackIndexIterator<'a> {
             let padded_item_length = if has_encrypted_content(&self.view) {
                 let remainder = item_length % 8;
                 if remainder > 0 {
-                    item_length.checked_add(8-remainder).ok_or(PackIndexIteratorError{})?
+                    item_length.checked_add(8-remainder).ok_or(Error::IndexIteratorError)?
                 } else {
                     item_length
                 }
@@ -193,14 +192,14 @@ impl<'a> PackIndexIterator<'a> {
             let end = (self.content_position + item_length) as u64;
 
             if has_padding(&self.view) {
-                self.content_position = self.content_position.checked_add(padded_item_length).ok_or(PackIndexIteratorError{})?;
+                self.content_position = self.content_position.checked_add(padded_item_length).ok_or(Error::IndexIteratorError)?;
             } else {
-                self.content_position = self.content_position.checked_add(item_length).ok_or(PackIndexIteratorError{})?;
+                self.content_position = self.content_position.checked_add(item_length).ok_or(Error::IndexIteratorError)?;
             }
 
             Ok(::PackedFile {
                 timestamp: timestamp,
-                path: String::from_utf8(file_path).map_err(|_| PackIndexIteratorError{})?,
+                path: String::from_utf8(file_path).map_err(|_| Error::IndexIteratorError)?,
                 data: Mutex::new(::PackedFileData {
                     inner: ::PackedFileDataType::LazyLoading(LazyLoadingPackedFile {
                         file_view: (*self.view).clone(),
@@ -210,7 +209,7 @@ impl<'a> PackIndexIterator<'a> {
                 })
             })
         } else {
-            Err(PackIndexIteratorError{})
+            Err(Error::IndexIteratorError)
         }
     }
 }
@@ -225,22 +224,22 @@ impl<'a> Iterator for PackIndexIterator<'a> {
     }
 }
 
-pub fn parse_pack<'a>(input_file: File) -> Result<::PackFile, ::ParsePackError> {
+pub fn parse_pack<'a>(input_file: File) -> Result<::PackFile> {
     let file_view = FileView::new(input_file)?;
     if file_view.length < 4 || file_view.length < get_static_header_size(&file_view) as u64 {
-        return Err(::ParsePackError::InvalidFileError)
+        return Err(Error::InvalidFileError)
     }
 
     if file_view.length < (get_static_header_size(&file_view) + get_extended_header_size(&file_view)) as u64 {
-        return Err(::ParsePackError::InvalidFileError)
+        return Err(Error::InvalidFileError)
     }
 
     if get_preamble(&file_view) != ::PFH5_PREAMBLE && get_preamble(&file_view) != ::PFH4_PREAMBLE {
-        return Err(::ParsePackError::InvalidHeaderError)
+        return Err(Error::InvalidHeaderError)
     }
 
     if get_file_type(&file_view) > 4 {
-        return Err(::ParsePackError::InvalidHeaderError)
+        return Err(Error::InvalidHeaderError)
     }
 
     if !::PFHFlags::from_bits(LittleEndian::read_u32(&file_view.read(0x04..0x08)?.to_vec()) & !0xf).is_some() {
@@ -250,22 +249,4 @@ pub fn parse_pack<'a>(input_file: File) -> Result<::PackFile, ::ParsePackError> 
     Ok(::PackFile {
         view: file_view
     })
-}
-
-impl From<FileViewError> for PackIndexIteratorError {
-    fn from(_: FileViewError) -> Self {
-        PackIndexIteratorError {}
-    }
-}
-
-impl From<FileViewError> for ::ParsePackError {
-    fn from(_: FileViewError) -> Self {
-        ::ParsePackError::IOError
-    }
-}
-
-impl From<::ParsePackError> for ::BuildPackError {
-    fn from(_: ::ParsePackError) -> Self {
-        ::BuildPackError::IOError
-    }
 }
