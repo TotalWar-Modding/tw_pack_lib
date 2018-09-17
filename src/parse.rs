@@ -198,7 +198,7 @@ impl<'a> PackIndexIterator<'a> {
             }
 
             Ok(::PackedFile {
-                timestamp: timestamp,
+                timestamp,
                 path: String::from_utf8(file_path).map_err(|_| Error::IndexIteratorError)?,
                 data: Mutex::new(::PackedFileData::LazyLoading(LazyLoadingPackedFile {
                         file_view: (*self.view).clone(),
@@ -223,7 +223,7 @@ impl<'a> Iterator for PackIndexIterator<'a> {
     }
 }
 
-pub fn parse_pack<'a>(input_file: File) -> Result<::PackFile> {
+pub fn parse_pack(input_file: File) -> Result<::PackFile> {
     let file_view = FileView::new(input_file)?;
     if file_view.length < 4 || file_view.length < get_static_header_size(&file_view) as u64 {
         return Err(Error::InvalidFileError)

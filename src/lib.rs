@@ -205,8 +205,8 @@ impl PackedFile {
     pub fn new(timestamp: Option<u32>, path: String, data: Vec<u8>) -> Self {
         PackedFile {
             data: Mutex::new(PackedFileData::DataBacked(Arc::new(data))),
-            timestamp: timestamp,
-            path: path
+            timestamp,
+            path
         }
     }
 
@@ -265,7 +265,7 @@ impl fmt::Debug for PackedFile {
     }
 }
 
-pub fn parse_pack<'a>(input_file: File, load_lazy: bool) -> Result<::PackFile> {
+pub fn parse_pack(input_file: File, load_lazy: bool) -> Result<::PackFile> {
     let pack_file = parse::parse_pack(input_file)?;
     if !load_lazy {
         for packed_file in pack_file.into_iter() {

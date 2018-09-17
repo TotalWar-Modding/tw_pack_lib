@@ -10,19 +10,19 @@ use byteorder::WriteBytesExt;
 
 use error::Result;
 
-fn traverse_directory(directory: &Path, prefix: String) -> Result<Vec<::PackedFile>> {
+fn traverse_directory(directory: &Path, prefix: &str) -> Result<Vec<::PackedFile>> {
     let mut files = vec!();
     for entry in fs::read_dir(directory)? {
         let entry = entry?;
         let path = entry.path();
         let metadata = fs::metadata(&path)?;
-        let relative_path = if prefix.len() > 0 {
-            prefix.clone() + &"\\".to_string() + &entry.file_name().into_string().unwrap()
+        let relative_path = if !prefix.is_empty() {
+            prefix.to_owned() + &"\\".to_owned() + &entry.file_name().into_string().unwrap()
         } else {
             entry.file_name().into_string().unwrap()
         };
         if metadata.is_dir() {
-            let child_files = traverse_directory(&path, relative_path)?;
+            let child_files = traverse_directory(&path, &relative_path)?;
             files.extend(child_files)
         } else if metadata.is_file() {
             let mut file = File::open(path)?;
@@ -87,7 +87,7 @@ fn write_content<P: Borrow<::PackedFile>>(output_file: &mut File, files: &Vec<P>
 }
 
 pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: ::PFHVersion, bitmask: ::PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<()> {
-    let input_files = traverse_directory(input_directory, "".to_string())?;
+    let input_files = traverse_directory(input_directory, "")?;
     build_pack_from_memory(&input_files, output_file, version, bitmask, file_type, pfh_timestamp)
 }
 
