@@ -104,12 +104,26 @@ pub struct PackFile {
     view: FileView
 }
 
+/// This struct represents a **PackedFile**, a File contained inside a PackFile. 
+///
+/// A PackedFile is a File contained inside a PackFile. It contains:
+/// - `timestamp`: a timestamp in `u32` format of the PackedFile, usually his `last modified` date. Optional.
+/// - `path`: a path of type `a/b/c.whatever`. This is the *virtual* path of the PackedFile.
+/// - `data`: a `Mutex<PackedFileData>` with the data to be contained in the PackedFile. Private. If you want to get/set it, use the dedicated methods.
+///
+/// Keep in mind that other than decrypting the data if it's encrypted, the PackedFiles data is stored as it's in the PackFile.
+/// If you want to decode it/process it/edit it in any way, use an specialized program like RPFM, or write your own code for it.
 pub struct PackedFile {
     pub timestamp: Option<u32>,
     pub path: String,
     data: Mutex<PackedFileData>
 }
 
+/// This enum represents the **Data** contained inside a PackedFile. Not intended to be used outside this lib.
+///
+/// Due to **Lazy Loading** the data inside a PackedFile may or may not be loaded. That means we can have:
+/// - `DataBacked(Arc<Vec<u8>>)`: The data is loaded in memory, inside the Variant.
+/// - `LazyLoading(LazyLoadingPackedFile)`: The data is not loaded in memory. In the Variant is store information needed to get the data ondemand.
 #[derive(Clone)]
 pub(crate) enum PackedFileData {
     DataBacked(Arc<Vec<u8>>),
@@ -144,6 +158,8 @@ impl PFHVersion {
 }
 
 impl PackFile {
+
+    /// This function returns the [`PFHVersion`](enum.PFHVersion.html) of the provided PackFile.
     pub fn get_version(&self) -> ::PFHVersion {
         match parse::get_preamble(&self.view) {
             PFH5_PREAMBLE => PFHVersion::PFH5,
@@ -152,6 +168,7 @@ impl PackFile {
         }
     }
 
+    /// This function returns the [`PFHFileType`](enum.PFHFileType.html) of the provided PackFile.
     pub fn get_file_type(&self) -> PFHFileType {
         match parse::get_file_type(&self.view) {
             FILE_TYPE_BOOT => PFHFileType::Boot,
@@ -163,10 +180,15 @@ impl PackFile {
         }
     }
 
+    /// This function returns the [`PFHFlags`](enum.PFHFlags.html) of the provided PackFile.
     pub fn get_bitmask(&self) -> ::PFHFlags {
         parse::get_bitmask(&self.view)
     }
 
+    /// This function returns the `Timestamp` stored in the header of the provided PackFile, if any.
+    ///
+    /// Keep in mind this `Timestamp` is in `u32` format. If you want to actually check it, you have to convert it to something readable.
+    // So... TODO: Return a processed timestamp instead the raw value.
     pub fn get_timestamp(&self) -> u32 {
         parse::get_timestamp(&self.view)
     }
@@ -188,6 +210,8 @@ impl PackedFile {
         }
     }
 
+    /// This function tries to return the raw data contained inside a PackedFile. This ***can fail*** only if you're using Lazy-Loading to open the PackFile.
+    /// If not, you can safely unwrap the Result.
     pub fn get_data(&self) -> Result<Arc<Vec<u8>>> {
         let packed_file_data = &mut *self.data.lock().unwrap();
         let data = match &packed_file_data {
@@ -211,6 +235,7 @@ impl PackedFile {
         Ok(data)
     }
 
+    /// This function replaces whatever data the PackedFile has with the data provided to it.
     pub fn set_data(&mut self, data: Arc<Vec<u8>>) {
         let packed_file_data = &mut *self.data.lock().unwrap();
         *packed_file_data = PackedFileData::DataBacked(data);
