@@ -44,6 +44,9 @@ use cached_file_view::FileView;
 static DEBUG: bool = false;
 const PFH5_PREAMBLE: u32 = 0x35484650;
 const PFH4_PREAMBLE: u32 = 0x34484650;
+const PFH3_PREAMBLE: u32 = 0x33484650;
+const PFH2_PREAMBLE: u32 = 0x32484650;
+const PFH0_PREAMBLE: u32 = 0x30484650;
 const FILE_TYPE_BOOT: u32       = 0;
 const FILE_TYPE_RELEASE: u32    = 1;
 const FILE_TYPE_PATCH: u32      = 2;
@@ -164,6 +167,7 @@ impl PackFile {
         match parse::get_preamble(&self.view) {
             PFH5_PREAMBLE => PFHVersion::PFH5,
             PFH4_PREAMBLE => PFHVersion::PFH4,
+            PFH3_PREAMBLE | PFH2_PREAMBLE | PFH0_PREAMBLE => PFHVersion::Unsupported,
             _ => unreachable!()
         }
     }

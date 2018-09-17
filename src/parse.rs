@@ -233,6 +233,10 @@ pub fn parse_pack(input_file: File) -> Result<::PackFile> {
         return Err(Error::InvalidFileError)
     }
 
+    if get_preamble(&file_view) == ::PFH3_PREAMBLE || get_preamble(&file_view) == ::PFH2_PREAMBLE || get_preamble(&file_view) == ::PFH0_PREAMBLE {
+        return Err(Error::UnsupportedPackFile)
+    }
+
     if get_preamble(&file_view) != ::PFH5_PREAMBLE && get_preamble(&file_view) != ::PFH4_PREAMBLE {
         return Err(Error::InvalidHeaderError)
     }

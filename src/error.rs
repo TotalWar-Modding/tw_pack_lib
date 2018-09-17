@@ -10,12 +10,14 @@ pub type Result<T> = result::Result<T, Error>;
 /// This enum contains all the possible errors this library can return.
 /// 
 /// The possible variants, or error types are:
+/// - `UnsupportedPackFile`: Used for when we try to open explicity unsupported PackFiles, like PackFiles from games we don't support yet.
 /// - `InvalidHeaderError`: Used for when the Header of the PackFile is not valid.
 /// - `InvalidFileError`: Used for when the File we are trying to open is not a valid PackFile. 
 /// - `IndexIteratorError`: Used when iterating through PackedFiles fails for any reason.
 /// - `IOError`: Used for generic IO errors.
 #[derive(Debug)]
 pub enum Error {
+    UnsupportedPackFile,
     InvalidHeaderError,
     InvalidFileError,
     IndexIteratorError,
