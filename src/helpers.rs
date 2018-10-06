@@ -9,8 +9,8 @@ use self::chrono::Utc;
 pub fn get_current_time() -> u32 {
 
     // Get the current time as an encoded i64 and turn it into u32.
-    let mut creation_time = vec![0;8];
-    creation_time.write_i64::<LittleEndian>(Utc::now().naive_utc().timestamp()).unwrap();
-    creation_time.truncate(4);
-    LittleEndian::read_u32(&creation_time)
+    let mut date = vec![0;8];
+    date.write_i64::<LittleEndian>(Utc::now().naive_utc().timestamp()).unwrap();
+    date.truncate(4);
+    LittleEndian::read_u32(&date)
 }
