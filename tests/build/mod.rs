@@ -13,6 +13,5 @@ fn test_build_pfh5_pack() {
                                              &mut File::create(Path::new("tests/build/loadingscreen_test.pack")).unwrap(),
                                              PFHVersion::PFH5,
                                              PFHFlags::HAS_BIG_HEADER,
-                                             PFHFileType::Mod,
-                                             42).unwrap()
+                                             PFHFileType::Mod).unwrap()
 }
