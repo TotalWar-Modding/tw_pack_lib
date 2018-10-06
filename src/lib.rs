@@ -75,12 +75,10 @@ bitflags! {
 /// The possible values are:
 /// - `PFH5`: Used in Warhammer 2 and Arena.
 /// - `PFH4`: Used in Warhammer 1, Attila, Rome 2, and Thrones of Brittania.
-/// - `Unsupported`: Wildcard for any PackFile with a *Version* the lib doesn't support.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PFHVersion {
     PFH5,
     PFH4,
-    Unsupported,
 }
 
 /// This enum represents the **Type** of a PackFile. 
@@ -155,7 +153,6 @@ impl PFHVersion {
         match *self {
             PFHVersion::PFH5 => PFH5_PREAMBLE,
             PFHVersion::PFH4 => PFH4_PREAMBLE,
-            _ => unreachable!()
         }
     }
 }
@@ -167,7 +164,6 @@ impl PackFile {
         match parse::get_preamble(&self.view) {
             PFH5_PREAMBLE => PFHVersion::PFH5,
             PFH4_PREAMBLE => PFHVersion::PFH4,
-            PFH3_PREAMBLE | PFH2_PREAMBLE | PFH0_PREAMBLE => PFHVersion::Unsupported,
             _ => unreachable!()
         }
     }
