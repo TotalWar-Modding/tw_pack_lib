@@ -28,6 +28,7 @@ extern crate cached_file_view;
 mod build;
 mod crypto;
 pub mod error;
+mod helpers;
 mod parse;
 
 use error::Result;
@@ -275,10 +276,10 @@ pub fn parse_pack(input_file: File, load_lazy: bool) -> Result<::PackFile> {
     Ok(pack_file)
 }
 
-pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: PFHVersion, bitmask: PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<()> {
-    build::build_pack_from_filesystem(input_directory, output_file, version, bitmask, file_type, pfh_timestamp)
+pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: PFHVersion, bitmask: PFHFlags, file_type: ::PFHFileType) -> Result<()> {
+    build::build_pack_from_filesystem(input_directory, output_file, version, bitmask, file_type)
 }
 
-pub fn build_pack_from_memory<P: Borrow<PackedFile>>(input: &mut Vec<P>, output_file: &mut File, version: PFHVersion, bitmask: PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<()> {
-    build::build_pack_from_memory(input, output_file, version, bitmask, file_type, pfh_timestamp)
+pub fn build_pack_from_memory<P: Borrow<PackedFile>>(input: &mut Vec<P>, output_file: &mut File, version: PFHVersion, bitmask: PFHFlags, file_type: ::PFHFileType) -> Result<()> {
+    build::build_pack_from_memory(input, output_file, version, bitmask, file_type)
 }
