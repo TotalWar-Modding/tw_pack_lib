@@ -86,14 +86,16 @@ fn write_content<P: Borrow<::PackedFile>>(output_file: &mut File, files: &Vec<P>
 }
 
 pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: ::PFHVersion, bitmask: ::PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<()> {
-    let input_files = traverse_directory(input_directory, "")?;
-    build_pack_from_memory(&input_files, output_file, version, bitmask, file_type, pfh_timestamp)
+    let mut input_files = traverse_directory(input_directory, "")?;
+    build_pack_from_memory(&mut input_files, output_file, version, bitmask, file_type, pfh_timestamp)
 }
 
-pub fn build_pack_from_memory<P: Borrow<::PackedFile>>(input_files: &Vec<P>, output_file: &mut File, version: ::PFHVersion, bitmask: ::PFHFlags,  file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<()> {
+pub fn build_pack_from_memory<P: Borrow<::PackedFile>>(input_files: &mut Vec<P>, output_file: &mut File, version: ::PFHVersion, bitmask: ::PFHFlags,  file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<()> {
     let mut index_size = 0;
+    input_files.sort_unstable_by(|a, b| a.borrow().path.cmp(&b.borrow().path));
+    let input_files = &*input_files;
     for input_file in input_files {
-        let input_file = input_file.borrow();
+        let input_file: &::PackedFile = input_file.borrow();
         index_size += input_file.path.len() as u32 + 1;
         index_size += 4;
         if bitmask.contains(::PFHFlags::HAS_INDEX_WITH_TIMESTAMPS) {
