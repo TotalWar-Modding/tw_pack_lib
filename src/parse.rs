@@ -40,7 +40,7 @@ impl<'a> IntoIterator for &'a ::PackFile {
     type IntoIter = PackIndexIterator<'a>;
     fn into_iter(self) -> Self::IntoIter {
         let payload_position = if has_padding(&self.view) {
-            let unpadded = get_static_header_size(&self.view) + get_extended_header_size(&self.view) + get_index_size(&self.view);
+            let unpadded = get_static_header_size(&self.view) + get_pack_file_index_size(&self.view) + get_packed_file_index_size(&self.view);
             let remainder = unpadded % 8;
             if remainder > 0 {
                 unpadded + 8 - remainder
@@ -48,12 +48,12 @@ impl<'a> IntoIterator for &'a ::PackFile {
                 unpadded
             }
         } else {
-            get_static_header_size(&self.view) + get_extended_header_size(&self.view) + get_index_size(&self.view)
+            get_static_header_size(&self.view) + get_pack_file_index_size(&self.view) + get_packed_file_index_size(&self.view)
         };
         PackIndexIterator {
             view: &self.view,
-            next_item: get_index_length(&self.view),
-            index_position: (get_static_header_size(&self.view) + get_extended_header_size(&self.view)),
+            next_item: get_packed_file_index_length(&self.view),
+            index_position: (get_static_header_size(&self.view) + get_pack_file_index_size(&self.view)),
             content_position: payload_position
         }
     }
@@ -75,11 +75,23 @@ pub fn get_timestamp(view: &FileView) -> u32 {
     LittleEndian::read_u32(&view.read(0x18..0x1C).unwrap().to_vec())
 }
 
-fn get_index_length(view: &FileView) -> u32 {
+/// Get the amount of items in the PackFile Index.
+fn get_pack_file_index_length(view: &FileView) -> u32 {
+    LittleEndian::read_u32(&view.read(0x08..0x0C).unwrap().to_vec())
+}
+
+/// Get the size in bytes of the PackFile Index.
+fn get_pack_file_index_size(view: &FileView) -> u32 {
+    LittleEndian::read_u32(&view.read(0x0C..0x10).unwrap().to_vec())
+}
+
+/// Get the amount of items in the PackedFile Index.
+fn get_packed_file_index_length(view: &FileView) -> u32 {
     LittleEndian::read_u32(&view.read(0x10..0x14).unwrap().to_vec())
 }
 
-fn get_index_size(view: &FileView) -> u32 {
+/// Get the size in bytes of the PackedFile Index.
+fn get_packed_file_index_size(view: &FileView) -> u32 {
     LittleEndian::read_u32(&view.read(0x14..0x18).unwrap().to_vec())
 }
 
@@ -101,10 +113,6 @@ fn get_static_header_size(raw_data: &FileView) -> u32 {
     }
 }
 
-fn get_extended_header_size(view: &FileView) -> u32 {
-    LittleEndian::read_u32(&view.read(0x0C..0x10).unwrap().to_vec())
-}
-
 fn has_big_header(view: &FileView) -> bool {
     get_bitmask(&view).contains(::PFHFlags::HAS_BIG_HEADER)
 }
@@ -124,6 +132,32 @@ fn has_encrypted_content(view: &FileView) -> bool {
 fn has_padding(raw_data: &FileView) -> bool {
     get_preamble(&raw_data) == ::PFH5_PREAMBLE && has_encrypted_content(&raw_data)
 }
+
+pub fn get_pack_file_index(view: &FileView) -> Vec<String> {
+
+    let raw_index = view.read(get_static_header_size(view) as u64..(get_static_header_size(view) + get_pack_file_index_size(view)) as u64).unwrap().to_vec();
+    
+    let mut pack_file_index = vec![];
+    let mut pos: usize = 0;
+    for _ in 0..get_pack_file_index_length(view) {
+        let mut pack_file_name = String::new();
+
+        // For each byte...
+        loop {
+            let character = raw_index[pos];
+            if character == 0 {
+                pack_file_index.push(pack_file_name);
+                pos += 1;
+                break;
+            } else {
+                pack_file_name.push(character as char);
+                pos += 1;
+            }
+        }
+    }
+    pack_file_index
+}
+
 
 impl<'a> PackIndexIterator<'a> {
     fn read_index_u32(&self) -> Result<u32> {
@@ -156,7 +190,7 @@ impl<'a> PackIndexIterator<'a> {
                 self.index_position = self.index_position.checked_add(1).ok_or(Error::IndexIteratorError)?;
             }
 
-            let remaining_index_size = get_index_size(&self.view) - (self.index_position - get_static_header_size(&self.view) - get_extended_header_size(&self.view));
+            let remaining_index_size = get_packed_file_index_size(&self.view) - (self.index_position - get_static_header_size(&self.view) - get_pack_file_index_size(&self.view));
             let (file_path, len) = if has_encrypted_index(&self.view) {
                 ::crypto::decrypt_index_item_filename(&self.view.read(self.index_position as u64..(self.index_position + remaining_index_size) as u64)?.to_vec(), item_length as u8)
             } else {
@@ -229,7 +263,7 @@ pub fn parse_pack(input_file: File) -> Result<::PackFile> {
         return Err(Error::InvalidFileError)
     }
 
-    if file_view.length < (get_static_header_size(&file_view) + get_extended_header_size(&file_view)) as u64 {
+    if file_view.length < (get_static_header_size(&file_view) + get_pack_file_index_size(&file_view)) as u64 {
         return Err(Error::InvalidFileError)
     }
 
