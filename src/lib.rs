@@ -192,6 +192,13 @@ impl PackFile {
     pub fn get_timestamp(&self) -> u32 {
         parse::get_timestamp(&self.view)
     }
+
+    /// This function returns the `PackFile Index` some PackFiles have after their header.
+    ///
+    /// It's a `Vec<String>` with values like `test1.pack`. The game seems to force PackFiles in this Index (if it finds them) to be loaded before the current one.
+    pub fn get_pack_file_index(&self) -> Vec<String> {
+        parse::get_pack_file_index(&self.view)
+    }
 }
 
 impl PackedFile {
@@ -275,10 +282,10 @@ pub fn parse_pack(input_file: File, load_lazy: bool) -> Result<::PackFile> {
     Ok(pack_file)
 }
 
-pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: PFHVersion, bitmask: PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<()> {
-    build::build_pack_from_filesystem(input_directory, output_file, version, bitmask, file_type, pfh_timestamp)
+pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: PFHVersion, bitmask: PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32, pack_files: &[String]) -> Result<()> {
+    build::build_pack_from_filesystem(input_directory, output_file, version, bitmask, file_type, pfh_timestamp, pack_files)
 }
 
-pub fn build_pack_from_memory<P: Borrow<PackedFile>>(input: &mut Vec<P>, output_file: &mut File, version: PFHVersion, bitmask: PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<()> {
-    build::build_pack_from_memory(input, output_file, version, bitmask, file_type, pfh_timestamp)
+pub fn build_pack_from_memory<P: Borrow<PackedFile>>(input: &mut Vec<P>, output_file: &mut File, version: PFHVersion, bitmask: PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32, pack_files: &[String]) -> Result<()> {
+    build::build_pack_from_memory(pack_files, input, output_file, version, bitmask, file_type, pfh_timestamp)
 }

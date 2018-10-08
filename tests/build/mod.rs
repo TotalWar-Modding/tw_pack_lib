@@ -14,5 +14,6 @@ fn test_build_pfh5_pack() {
                                              PFHVersion::PFH5,
                                              PFHFlags::HAS_BIG_HEADER,
                                              PFHFileType::Mod,
-                                             42).unwrap()
+                                             42,
+                                             &["test1.pack".to_owned(), "test2.pack".to_owned()]).unwrap()
 }
