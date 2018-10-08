@@ -28,7 +28,6 @@ fn test_repack() {
         &mut f,
         PFHVersion::PFH5,
         PFHFlags::HAS_BIG_HEADER | PFHFlags::HAS_INDEX_WITH_TIMESTAMPS,
-        PFHFileType::Boot,
-        42).unwrap()
+        PFHFileType::Boot).unwrap()
 
 }

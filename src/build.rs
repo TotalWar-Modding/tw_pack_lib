@@ -9,6 +9,7 @@ use byteorder::LittleEndian;
 use byteorder::WriteBytesExt;
 
 use error::Result;
+use helpers::*;
 
 fn traverse_directory(directory: &Path, prefix: &str) -> Result<Vec<::PackedFile>> {
     let mut files = vec!();
@@ -34,7 +35,7 @@ fn traverse_directory(directory: &Path, prefix: &str) -> Result<Vec<::PackedFile
     Ok(files)
 }
 
-fn write_header<P: Borrow<::PackedFile>>(output_file: &mut File, version: ::PFHVersion, bitmask: ::PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32, index_size: u32, files: &Vec<P>) -> Result<()> {
+fn write_header<P: Borrow<::PackedFile>>(output_file: &mut File, version: ::PFHVersion, bitmask: ::PFHFlags, file_type: ::PFHFileType, index_size: u32, files: &Vec<P>) -> Result<()> {
     output_file.write_u32::<LittleEndian>(version.get_preamble())?;
     output_file.write_u32::<LittleEndian>(bitmask.bits | file_type.get_value())?;
     output_file.write_u32::<LittleEndian>(0)?; // PF Index Count
@@ -43,7 +44,7 @@ fn write_header<P: Borrow<::PackedFile>>(output_file: &mut File, version: ::PFHV
     output_file.write_u32::<LittleEndian>(index_size)?;
     match version {
         ::PFHVersion::PFH4  => {
-            output_file.write_u32::<LittleEndian>(pfh_timestamp)?;
+            output_file.write_u32::<LittleEndian>(get_current_time())?;
         },
         ::PFHVersion::PFH5 => {
             if bitmask.contains(::PFHFlags::HAS_BIG_HEADER) {
@@ -54,7 +55,7 @@ fn write_header<P: Borrow<::PackedFile>>(output_file: &mut File, version: ::PFHV
                 output_file.write_u32::<LittleEndian>(0)?;
                 output_file.write_u32::<LittleEndian>(0)?;
             } else {
-                output_file.write_u32::<LittleEndian>(pfh_timestamp)?;
+                output_file.write_u32::<LittleEndian>(get_current_time())?;
             }
         }
     }
@@ -85,12 +86,12 @@ fn write_content<P: Borrow<::PackedFile>>(output_file: &mut File, files: &Vec<P>
     Ok(())
 }
 
-pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: ::PFHVersion, bitmask: ::PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<()> {
+pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: ::PFHVersion, bitmask: ::PFHFlags, file_type: ::PFHFileType) -> Result<()> {
     let mut input_files = traverse_directory(input_directory, "")?;
-    build_pack_from_memory(&mut input_files, output_file, version, bitmask, file_type, pfh_timestamp)
+    build_pack_from_memory(&mut input_files, output_file, version, bitmask, file_type)
 }
 
-pub fn build_pack_from_memory<P: Borrow<::PackedFile>>(input_files: &mut Vec<P>, output_file: &mut File, version: ::PFHVersion, bitmask: ::PFHFlags,  file_type: ::PFHFileType, pfh_timestamp: u32) -> Result<()> {
+pub fn build_pack_from_memory<P: Borrow<::PackedFile>>(input_files: &mut Vec<P>, output_file: &mut File, version: ::PFHVersion, bitmask: ::PFHFlags, file_type: ::PFHFileType) -> Result<()> {
     let mut index_size = 0;
     input_files.sort_unstable_by(|a, b| a.borrow().path.cmp(&b.borrow().path));
     let input_files = &*input_files;
@@ -105,7 +106,7 @@ pub fn build_pack_from_memory<P: Borrow<::PackedFile>>(input_files: &mut Vec<P>,
             index_size += 1;
         }
     }
-    write_header(output_file, version, bitmask, file_type, pfh_timestamp, index_size, &input_files)?;
+    write_header(output_file, version, bitmask, file_type, index_size, &input_files)?;
     write_index(output_file, input_files, version, bitmask)?;
     write_content(output_file, input_files)?;
     Ok(())
