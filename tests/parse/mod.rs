@@ -8,7 +8,7 @@ use tw_pack_lib;
 fn test_read_header() {
     fs::copy("tests/twa_boot.pack.bk", "tests/read_header_twa_boot.pack").unwrap();
     let f = File::open(Path::new("tests/read_header_twa_boot.pack")).expect("file not found");
-    let pack = tw_pack_lib::parse_pack(f, true).unwrap();
+    let pack = tw_pack_lib::parse_pack(f).unwrap();
 
     for item in pack.into_iter() {
         println!("{}", item);

@@ -16,7 +16,7 @@ use tw_pack_lib::PFHFlags;
 fn test_repack() {
     fs::copy("tests/twa_boot.pack.bk", "tests/repack_twa_boot.pack").unwrap();
     let f = File::open(Path::new("tests/repack_twa_boot.pack")).expect("file not found");
-    let pack = tw_pack_lib::parse_pack(f, true).unwrap();
+    let pack = tw_pack_lib::parse_pack(f).unwrap();
     let mut packed_files: Vec<PackedFile> = pack.into_iter().collect();
 
     for packed_file in &packed_files {
@@ -38,7 +38,7 @@ fn test_repack() {
 fn test_pack_file_index() {
     fs::copy("tests/test_pack_file_index.pack.bk", "tests/test_pack_file_index.pack").unwrap();
     let f = File::open(Path::new("tests/test_pack_file_index.pack")).expect("file not found");
-    let pack = tw_pack_lib::parse_pack(f, true).unwrap();
+    let pack = tw_pack_lib::parse_pack(f).unwrap();
     let pack_files = pack.get_pack_file_index();
     println!("{:?}", pack_files);
     let mut packed_files: Vec<PackedFile> = pack.into_iter().collect();
@@ -57,7 +57,7 @@ fn test_pack_file_index() {
         &pack_files).unwrap();
 
     let f = File::open(Path::new("tests/test_pack_file_index_copy.pack")).expect("file not found");
-    let pack = tw_pack_lib::parse_pack(f, true).unwrap();
+    let pack = tw_pack_lib::parse_pack(f).unwrap();
     let pack_files_copy = pack.get_pack_file_index();
     assert_eq!(pack_files, pack_files_copy);
 }
