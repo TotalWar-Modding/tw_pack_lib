@@ -217,6 +217,23 @@ impl PackedFile {
         }
     }
 
+    /// This function tries to load the data from a PackedFile to memory, if it's not yet loaded. Useful for situations when we just 
+    /// want to "disable" the Lazy Loading, or for when we need all the stuff loaded in memory for whatever reason.
+    pub fn load_data(&self) -> Result<()> {
+        let packed_file_data = &mut *self.data.lock().unwrap();
+        let data = if let PackedFileData::LazyLoading(lazy) = packed_file_data {
+            if lazy.is_encrypted {
+                let plaintext = crypto::decrypt_file(&lazy.file_view.read(&lazy.range)?.to_vec(), (lazy.range.end - lazy.range.start) as usize, false);
+                assert!(plaintext.len() as u64 == lazy.range.end - lazy.range.start, format!("{} != {}", plaintext.len(), lazy.range.end - lazy.range.start));
+                Arc::new(plaintext)
+            } else {
+                Arc::new(lazy.file_view.read(&lazy.range)?.to_vec())
+            }
+        } else { return Ok(()) };
+        *packed_file_data = PackedFileData::DataBacked(data);
+        Ok(())
+    }
+
     /// This function tries to return the raw data contained inside a PackedFile. This ***can fail*** only if you're using Lazy-Loading to open the PackFile.
     /// If not, you can safely unwrap the Result.
     pub fn get_data(&self) -> Result<Arc<Vec<u8>>> {
