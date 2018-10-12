@@ -40,6 +40,7 @@ use std::fs::File;
 use std::fmt;
 use std::path::Path;
 use cached_file_view::FileView;
+use cached_file_view::FileViewMapping;
 
 static DEBUG: bool = false;
 const PFH5_PREAMBLE: u32 = 0x35484650;
@@ -100,9 +101,10 @@ pub enum PFHFileType {
     Other(u32),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct PackFile {
-    view: FileView
+    view: FileView,
+    begin: FileViewMapping
 }
 
 /// This struct represents a **PackedFile**, a File contained inside a PackFile. 
@@ -289,13 +291,8 @@ impl fmt::Debug for PackedFile {
     }
 }
 
-pub fn parse_pack(input_file: File, load_lazy: bool) -> Result<::PackFile> {
+pub fn parse_pack(input_file: File) -> Result<::PackFile> {
     let pack_file = parse::parse_pack(input_file)?;
-    if !load_lazy {
-        for packed_file in pack_file.into_iter() {
-            packed_file.get_data()?;
-        }
-    }
     Ok(pack_file)
 }
 
