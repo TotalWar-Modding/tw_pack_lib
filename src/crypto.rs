@@ -5,15 +5,15 @@ use byteorder::ByteOrder;
 use byteorder::LittleEndian;
 use byteorder::WriteBytesExt;
 
-static INDEX_KEY: &str = "L2{B3dPL7L*v&+Q3ZsusUhy[BGQn(Uq$f>JQdnvdlf{-K:>OssVDr#TlYU|13B}r";
+static INDEX_KEY: &str = "#:AhppdV-!PEfz&}[]Nv?6w4guU%dF5.fq:n*-qGuhBJJBm&?2tPy!geW/+k#pG?";
 fn get_key_at(pos: usize) -> u8 {
     INDEX_KEY.as_bytes()[pos % (INDEX_KEY.len())]
 }
 
 pub fn decrypt_index_item_file_length(item_index: u32, ciphertext: u32) -> u32 {
-    let decrypted = item_index ^ ciphertext ^ 0x15091984;
+    let decrypted = !item_index ^ ciphertext ^ 0xE10B73F4;
     if ::DEBUG {
-        println!("# {:X} = {:X} ^ {:X} ^ {:X}", decrypted, item_index, ciphertext, 0x15091984);
+        println!("File length: {:X} = {:X} ^ {:X} ^ {:X}", decrypted, !item_index, ciphertext, 0x15091984);
     }
     decrypted
 }
@@ -22,9 +22,9 @@ pub fn decrypt_index_item_filename(ciphertext: &[u8], key: u8) -> (Vec<u8>, u32)
     let mut buffer: Vec<u8> = Vec::with_capacity(100);
     let mut idx = 0;
     loop {
-        let c = ciphertext[idx as usize] ^ key ^ get_key_at(idx);
+        let c = ciphertext[idx as usize] ^ !key ^ get_key_at(idx);
         if ::DEBUG {
-            println!("{:X} ({}) = {:X} ^ {:X} ^ {:X}", c, c as char, ciphertext[idx as usize], key, get_key_at(idx));
+            println!("{:X} ({}) = {:X} ^ {:X} ^ {:X}", c, c as char, ciphertext[idx as usize], !key, get_key_at(idx));
         }
         idx += 1;
         if c == 0 {
