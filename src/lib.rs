@@ -225,11 +225,11 @@ impl PackedFile {
         let packed_file_data = &mut *self.data.lock().unwrap();
         let data = if let PackedFileData::LazyLoading(lazy) = packed_file_data {
             if lazy.is_encrypted {
-                let plaintext = crypto::decrypt_file(&lazy.file_view.read(&lazy.range)?.to_vec(), (lazy.range.end - lazy.range.start) as usize, false);
+                let plaintext = crypto::decrypt_file(&lazy.file_view.read_raw(&lazy.range)?, (lazy.range.end - lazy.range.start) as usize, false);
                 assert!(plaintext.len() as u64 == lazy.range.end - lazy.range.start, format!("{} != {}", plaintext.len(), lazy.range.end - lazy.range.start));
                 Arc::new(plaintext)
             } else {
-                Arc::new(lazy.file_view.read(&lazy.range)?.to_vec())
+                Arc::new(lazy.file_view.read_raw(&lazy.range)?)
             }
         } else { return Ok(()) };
         *packed_file_data = PackedFileData::DataBacked(data);
@@ -246,11 +246,11 @@ impl PackedFile {
                     println!("PackedFile get_data (0x{:x?}-0x{:x?})", lazy.range.start, lazy.range.end);
                 }
                 if lazy.is_encrypted {
-                    let plaintext = crypto::decrypt_file(&lazy.file_view.read(&lazy.range)?.to_vec(), (lazy.range.end - lazy.range.start) as usize, false);
+                    let plaintext = crypto::decrypt_file(&lazy.file_view.read_raw(&lazy.range)?.to_vec(), (lazy.range.end - lazy.range.start) as usize, false);
                     assert!(plaintext.len() as u64 == lazy.range.end - lazy.range.start, format!("{} != {}", plaintext.len(), lazy.range.end - lazy.range.start));
                     Arc::new(plaintext)
                 } else {
-                    Arc::new(lazy.file_view.read(&lazy.range)?.to_vec())
+                    Arc::new(lazy.file_view.read_raw(&lazy.range)?)
                 }
             },
             PackedFileData::DataBacked(data) => {

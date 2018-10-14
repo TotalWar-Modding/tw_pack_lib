@@ -134,9 +134,7 @@ fn has_padding(raw_data: &FileView) -> bool {
 }
 
 pub fn get_pack_file_index(view: &FileView) -> Vec<String> {
-
     let raw_index = view.read(get_static_header_size(view) as u64..(get_static_header_size(view) + get_pack_file_index_size(view)) as u64).unwrap().to_vec();
-    
     let mut pack_file_index = vec![];
     let mut pos: usize = 0;
     for _ in 0..get_pack_file_index_length(view) {
