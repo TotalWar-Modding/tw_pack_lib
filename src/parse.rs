@@ -282,7 +282,7 @@ pub fn parse_pack(input_file: File) -> Result<::PackFile> {
         eprintln!("Warning: Bitmask has unknown bits set")
     }
 
-    let begin = file_view.read(0..get_packed_file_index_size(&file_view) as u64)?;
+    let begin = file_view.read(0..(get_static_header_size(&file_view) as u64 + get_pack_file_index_size(&file_view) as u64 + get_packed_file_index_size(&file_view) as u64))?;
     Ok(::PackFile {
         view: file_view,
         begin: begin
