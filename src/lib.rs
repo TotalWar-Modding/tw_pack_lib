@@ -101,6 +101,11 @@ pub enum PFHFileType {
     Other(u32),
 }
 
+/// This struct represents a parsed `PackFile`.
+///
+/// All his members are private. To obtain any data from it you have to use the provided getters.
+/// If you want to make more complex use of the PackFile, like editing PackedFiles, it's recommended that you use this only
+/// to populate your own `PackFile` struct with the info/data you need.
 #[derive(Clone)]
 pub struct PackFile {
     view: FileView,
@@ -190,7 +195,6 @@ impl PackFile {
     /// This function returns the `Timestamp` stored in the header of the provided PackFile, if any.
     ///
     /// Keep in mind this `Timestamp` is in `u32` format. If you want to actually check it, you have to convert it to something readable.
-    // So... TODO: Return a processed timestamp instead the raw value.
     pub fn get_timestamp(&self) -> u32 {
         parse::get_timestamp(&self.view)
     }
@@ -291,15 +295,18 @@ impl fmt::Debug for PackedFile {
     }
 }
 
+/// This function tries to create a `PackFile` struct by parsing a file.
 pub fn parse_pack(input_file: File) -> Result<::PackFile> {
     let pack_file = parse::parse_pack(input_file)?;
     Ok(pack_file)
 }
 
+/// This function tries to create a `PackFile` in the filesystem from individual files.
 pub fn build_pack_from_filesystem(input_directory: &Path, output_file: &mut File, version: PFHVersion, bitmask: PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32, pack_files: &[String]) -> Result<()> {
     build::build_pack_from_filesystem(input_directory, output_file, version, bitmask, file_type, pfh_timestamp, pack_files)
 }
 
+/// This function tries to create a `PackFile` in the filesystem from PackedFiles.
 pub fn build_pack_from_memory<P: Borrow<PackedFile>>(input: &mut Vec<P>, output_file: &mut File, version: PFHVersion, bitmask: PFHFlags, file_type: ::PFHFileType, pfh_timestamp: u32, pack_files: &[String]) -> Result<()> {
     build::build_pack_from_memory(pack_files, input, output_file, version, bitmask, file_type, pfh_timestamp)
 }
