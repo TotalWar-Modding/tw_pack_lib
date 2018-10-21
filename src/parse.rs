@@ -100,7 +100,9 @@ fn _get_signature_offset(view: &FileView) -> u32 {
 }
 
 fn get_static_header_size(raw_data: &FileView) -> u32 {
-    if get_preamble(&raw_data) == ::PFH4_PREAMBLE {
+    if get_preamble(&raw_data) == ::PFH3_PREAMBLE {
+        0x20
+    } else if get_preamble(&raw_data) == ::PFH4_PREAMBLE {
         0x1C
     } else if get_preamble(&raw_data) == ::PFH5_PREAMBLE {
         if has_big_header(&raw_data) {
@@ -175,7 +177,7 @@ impl<'a> PackIndexIterator<'a> {
             };
             self.index_position = self.index_position.checked_add(4).ok_or(Error::IndexIteratorError)?;
 
-            // read 4 bytes whatever, if present
+            // read 4 bytes timestamp, if present
             let timestamp = if has_index_with_timestamps(&self.view) {
                 let d = self.read_index_u32()?;
                 self.index_position = self.index_position.checked_add(4).ok_or(Error::IndexIteratorError)?;
@@ -184,6 +186,12 @@ impl<'a> PackIndexIterator<'a> {
                 None
             };
 
+            // read 4 bytes unknown, if present
+            if get_preamble(&self.view) == ::PFH3_PREAMBLE {
+                self.index_position = self.index_position.checked_add(4).ok_or(Error::IndexIteratorError)?;
+            }
+
+            // read unused byte, if present
             if get_preamble(&self.view) == ::PFH5_PREAMBLE && !has_big_header(&self.view) {
                 self.index_position = self.index_position.checked_add(1).ok_or(Error::IndexIteratorError)?;
             }
@@ -266,11 +274,11 @@ pub fn parse_pack(input_file: File) -> Result<::PackFile> {
         return Err(Error::InvalidFileError)
     }
 
-    if get_preamble(&file_view) == ::PFH3_PREAMBLE || get_preamble(&file_view) == ::PFH2_PREAMBLE || get_preamble(&file_view) == ::PFH0_PREAMBLE {
+    if get_preamble(&file_view) == ::PFH2_PREAMBLE || get_preamble(&file_view) == ::PFH0_PREAMBLE {
         return Err(Error::UnsupportedPackFile)
     }
 
-    if get_preamble(&file_view) != ::PFH5_PREAMBLE && get_preamble(&file_view) != ::PFH4_PREAMBLE {
+    if get_preamble(&file_view) != ::PFH5_PREAMBLE && get_preamble(&file_view) != ::PFH4_PREAMBLE && get_preamble(&file_view) != ::PFH3_PREAMBLE{
         return Err(Error::InvalidHeaderError)
     }
 

@@ -9,6 +9,7 @@ use byteorder::LittleEndian;
 use byteorder::WriteBytesExt;
 
 use error::Result;
+use error::Error;
 
 fn traverse_directory(directory: &Path, prefix: &str) -> Result<Vec<::PackedFile>> {
     let mut files = vec!();
@@ -67,6 +68,9 @@ fn write_header<P: Borrow<::PackedFile>>(
             } else {
                 output_file.write_u32::<LittleEndian>(pfh_timestamp)?;
             }
+        },
+        _ => {
+            return Err(Error::UnsupportedPackFile);
         }
     }
     Ok(())
