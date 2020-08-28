@@ -1,0 +1,35 @@
+name: Rust CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  schedule:
+    - cron: "0 0 * * *"
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_VERBOSE: true
+  CARGO_TERM_COLOR: always
+
+jobs:
+  cargo-test:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        profile: ['', --release]
+        toolchain: [stable, beta, nightly]
+    runs-on: ${{ matrix.os }} 
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v2
+      - name: Select rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: clippy
+          override: true
+      - name: cargo test
+        run: cargo test ${{ matrix.profile }}
