@@ -80,6 +80,7 @@ bitflags! {
 pub enum PFHVersion {
     PFH5,
     PFH4,
+    PFH3
 }
 
 /// This enum represents the **Type** of a PackFile. 
@@ -160,6 +161,7 @@ impl PFHVersion {
         match *self {
             PFHVersion::PFH5 => PFH5_PREAMBLE,
             PFHVersion::PFH4 => PFH4_PREAMBLE,
+            PFHVersion::PFH3 => PFH3_PREAMBLE
         }
     }
 }
@@ -171,6 +173,7 @@ impl PackFile {
         match parse::get_preamble(&self.view) {
             PFH5_PREAMBLE => PFHVersion::PFH5,
             PFH4_PREAMBLE => PFHVersion::PFH4,
+            PFH3_PREAMBLE => PFHVersion::PFH3,
             _ => unreachable!()
         }
     }
